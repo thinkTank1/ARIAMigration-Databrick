@@ -20,8 +20,16 @@
 # MAGIC          <th>Comments </th>
 # MAGIC       </tr>
 # MAGIC       <tr>
-# MAGIC          <td style='text-align: left; '><a href="https://tools.hmcts.net/jira/browse/ARIADM-95">ARIADM-95</a>/NSA/FEB-2023</td>
+# MAGIC          <td style='text-align: left; '><a href="https://tools.hmcts.net/jira/browse/ARIADM-95">ARIADM-95</a>/NSA/SEP-2024</td>
 # MAGIC          <td>JOH :Compete Landing to Bronze Notebook</td>
+# MAGIC       </tr>
+# MAGIC       <tr>
+# MAGIC          <td style='text-align: left; '><a href="https://tools.hmcts.net/jira/browse/ARIADM-97">ARIADM-97</a>/NSA/SEP-2024</td>
+# MAGIC          <td>JOH: Create Silver and gold HTML outputs: </td>
+# MAGIC       </tr>
+# MAGIC       <tr>
+# MAGIC          <td style='text-align: left; '><a href="https://tools.hmcts.net/jira/browse/ARIADM-123">ARIADM-123</a>/NSA/SEP-2024</td>
+# MAGIC          <td>JOH: Create Gold outputs- Json and A360</td>
 # MAGIC       </tr>
 # MAGIC     
 # MAGIC    </tbody>
@@ -49,7 +57,24 @@ spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read Latest landing files 
+# MAGIC ## Set Variables
+
+# COMMAND ----------
+
+
+initial_Load = False
+
+# Setting variables for use in subsequent cells
+raw_mnt = "/mnt/ingest00rawsboxraw/ARIADM/ARM/JOH"
+landing_mnt = "/mnt/ingest00landingsboxlanding/"
+bronze_mnt = "/mnt/ingest00curatedsboxbronze/ARIADM/ARM/JOH"
+silver_mnt = "/mnt/ingest00curatedsboxsilver/ARIADM/ARM/JOH"
+gold_mnt = "/mnt/ingest00curatedsboxgold/ARIADM/ARM/JOH"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Functions to Read Latest Landing Files
 
 # COMMAND ----------
 
@@ -154,22 +179,20 @@ def read_latest_parquet(folder_name: str, view_name: str, process_name: str, bas
 
 # COMMAND ----------
 
-raw_mnt = "/mnt/ingest00rawsboxraw"
-landing_mnt = "/mnt/ingest00landingsboxlanding"
-bronze_mnt = "/mnt/ingest00curatedsboxbronze"
-silver_mnt = "/mnt/ingest00curatedsboxsilver"
+# MAGIC %md
+# MAGIC ## Raw DLT Tables Creation
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Raw DLT Tables Creation
+# MAGIC
 
 # COMMAND ----------
 
 @dlt.table(
     name="raw_adjudicatorrole",
     comment="Delta Live Table ARIA AdjudicatorRole.",
-    path=f"{raw_mnt}/ARIA/Raw_AdjudicatorRole"
+    path=f"{raw_mnt}/Raw_AdjudicatorRole"
 )
 def Raw_AdjudicatorRole():
     return read_latest_parquet("AdjudicatorRole", "tv_AdjudicatorRole", "ARIA_ARM_JOH_ARA")
@@ -178,7 +201,7 @@ def Raw_AdjudicatorRole():
 @dlt.table(
     name="raw_adjudicator",
     comment="Delta Live Table ARIA Adjudicator.",
-    path=f"{raw_mnt}/ARIA/Raw_Adjudicator"
+    path=f"{raw_mnt}/Raw_Adjudicator"
 )
 def Raw_Adjudicator():
     return read_latest_parquet("Adjudicator", "tv_Adjudicator", "ARIA_ARM_JOH_ARA")
@@ -187,7 +210,7 @@ def Raw_Adjudicator():
 @dlt.table(
     name="raw_employmentterm",
     comment="Delta Live Table ARIA EmploymentTerm.",
-    path=f"{raw_mnt}/ARIA/Raw_EmploymentTerm"
+    path=f"{raw_mnt}/Raw_EmploymentTerm"
 )
 def Raw_EmploymentTerm():
      return read_latest_parquet("ARIAEmploymentTerm", "tv_EmploymentTerm", "ARIA_ARM_JOH_ARA")
@@ -196,7 +219,7 @@ def Raw_EmploymentTerm():
 @dlt.table(
     name="raw_donotusereason",
     comment="Delta Live Table ARIA DoNotUseReason.",
-    path=f"{raw_mnt}/ARIA/Raw_DoNotUseReason"
+    path=f"{raw_mnt}/Raw_DoNotUseReason"
 )
 def Raw_DoNotUseReason():
     return read_latest_parquet("DoNotUseReason", "tv_DoNotUseReason", "ARIA_ARM_JOH_ARA")
@@ -205,7 +228,7 @@ def Raw_DoNotUseReason():
 @dlt.table(
     name="raw_johistory",
     comment="Delta Live Table ARIA JoHistory.",
-    path=f"{raw_mnt}/ARIA/Raw_JoHistory"
+    path=f"{raw_mnt}/Raw_JoHistory"
 )
 def Raw_JoHistory():
     return read_latest_parquet("JoHistory", "tv_JoHistory", "ARIA_ARM_JOH_ARA")
@@ -214,7 +237,7 @@ def Raw_JoHistory():
 @dlt.table(
     name="raw_othercentre",
     comment="Delta Live Table ARIA OtherCentre.",
-    path=f"{raw_mnt}/ARIA/Raw_OtherCentre"
+    path=f"{raw_mnt}/Raw_OtherCentre"
 )
 def Raw_OtherCentre():
     return read_latest_parquet("OtherCentre", "tv_OtherCentre", "ARIA_ARM_JOH_ARA")
@@ -223,7 +246,7 @@ def Raw_OtherCentre():
 @dlt.table(
     name="raw_hearingcentre",
     comment="Delta Live Table ARIA HearingCentre.",
-    path=f"{raw_mnt}/ARIA/Raw_HearingCentre"
+    path=f"{raw_mnt}/Raw_HearingCentre"
 )
 def Raw_HearingCentre():
     return read_latest_parquet("ARIAHearingCentre", "tv_HearingCentre", "ARIA_ARM_JOH_ARA")
@@ -232,7 +255,7 @@ def Raw_HearingCentre():
 @dlt.table(
     name="raw_users",
     comment="Delta Live Table ARIA Users.",
-    path=f"{raw_mnt}/ARIA/Raw_Users"
+    path=f"{raw_mnt}/Raw_Users"
 )
 def Raw_Users():
     return read_latest_parquet("Users", "tv_Users", "ARIA_ARM_JOH_ARA")
@@ -309,7 +332,7 @@ from pyspark.sql.functions import col
 @dlt.table(
     name="bronze_adjudicator_et_hc_dnur",
     comment="Delta Live Table combining Adjudicator data with Hearing Centre, Employment Terms, and Do Not Use Reason.",
-    path=f"{bronze_mnt}/ARIADM/ARM/bronze_adjudicator_et_hc_dnur"
+    path=f"{bronze_mnt}/bronze_adjudicator_et_hc_dnur"
 )
 def bronze_adjudicator_et_hc_dnur():
     return (
@@ -402,7 +425,7 @@ def bronze_adjudicator_et_hc_dnur():
 @dlt.table(
     name="bronze_johistory_users",
     comment="Delta Live Table combining JoHistory data with Users information.",
-    path=f"{bronze_mnt}/ARIADM/ARM/bronze_johistory_users" 
+    path=f"{bronze_mnt}/bronze_johistory_users" 
 )
 def bronze_johistory_users():
     return (
@@ -443,7 +466,7 @@ def bronze_johistory_users():
 @dlt.table(
     name="bronze_othercentre_hearingcentre",
     comment="Delta Live Table combining OtherCentre data with HearingCentre information.",
-    path=f"{bronze_mnt}/ARIADM/ARM/bronze_othercentre_hearingcentre" 
+    path=f"{bronze_mnt}/bronze_othercentre_hearingcentre" 
 )
 def bronze_othercentre_hearingcentre():
     return (
@@ -487,7 +510,7 @@ def bronze_othercentre_hearingcentre():
 @dlt.table(
     name="bronze_adjudicator_role",
     comment="Delta Live Table for Adjudicator Role data.",
-    path=f"{bronze_mnt}/ARIADM/ARM/bronze_adjudicator_role" 
+    path=f"{bronze_mnt}/bronze_adjudicator_role" 
 )
 def bronze_adjudicator_role():
     return  (
@@ -518,13 +541,14 @@ def bronze_adjudicator_role():
 # MAGIC WHERE jr.Role NOT IN ( 7, 8 ) 
 # MAGIC GROUP BY a.[AdjudicatorId]
 # MAGIC ```
+# MAGIC The below staging table is joined with other silver table to esure the Role NOT IN ( 7, 8 ) 
 
 # COMMAND ----------
 
 @dlt.table(
     name="stg_joh_filtered",
     comment="Delta Live silver Table segmentation with judges only using bronze_adjudicator_et_hc_dnur.",
-    path=f"{silver_mnt}/ARIADM/ARM/stg_joh_filtered"
+    path=f"{silver_mnt}/stg_joh_filtered"
 )
 def stg_joh_filtered():
     return (
@@ -559,72 +583,72 @@ def stg_joh_filtered():
 @dlt.table(
     name="silver_adjudicator_detail",
     comment="Delta Live Silver Table for Adjudicator details enhanced with Hearing Centre and DNUR information.",
-    path=f"{silver_mnt}/ARIADM/ARM/silver_adjudicator_detail"
+    path=f"{silver_mnt}/silver_adjudicator_detail"
 )
 def silver_adjudicator_detail():
     return (
-        dlt.read("bronze_adjudicator_et_hc_dnur").select(
-            col("AdjudicatorId"),
-            col("Surname"),
-            col("Forenames"),
-            col("Title"),
-            col("DateOfBirth"),
-            when(col("CorrespondenceAddress") == 1, "Business").otherwise("Home").alias("CorrespondenceAddress"),
-            col("ContactDetails"),
-            when(col("ContactTelephone") == 1, "Business")
-                .when(col("ContactTelephone") == 2, "Home")
-                .when(col("ContactTelephone") == 3, "Mobile")
-                .otherwise(col("ContactTelephone")).alias("ContactTelephone"),
-            col("AvailableAtShortNotice"),
-            col("DesignatedCentre"),
-            col("EmploymentTerm"),
-            when(col("FullTime") == 1,'Yes').otherwise("No").alias("FullTime"),
-            col("IdentityNumber"),
-            col("DateOfRetirement"),
-            col("ContractEndDate"),
-            col("ContractRenewalDate"),
-            col("DoNotUse"),
-            col("DoNotUseReason"),
-            when(col("JudicialStatus") == 1, "Deputy President")
-                .when(col("JudicialStatus") == 2, "Designated Immigration Judge")
-                .when(col("JudicialStatus") == 3, "Immigration Judge")
-                .when(col("JudicialStatus") == 4, "President")
-                .when(col("JudicialStatus") == 5, "Senior Immigration Judge")
-                .when(col("JudicialStatus") == 6, "Deputy Senior Immigration Judge")
-                .when(col("JudicialStatus") == 7, "Senior President")
-                .when(col("JudicialStatus") == 21, "Vice President of the Upper Tribunal IAAC")
-                .when(col("JudicialStatus") == 22, "Designated Judge of the First-tier Tribunal")
-                .when(col("JudicialStatus") == 23, "Judge of the First-tier Tribunal")
-                .when(col("JudicialStatus") == 25, "Upper Tribunal Judge")
-                .when(col("JudicialStatus") == 26, "Deputy Judge of the Upper Tribunal")
-                .when(col("JudicialStatus") == 28, "Resident Judge of the First-tier Tribunal")
-                .when(col("JudicialStatus") == 29, "Principle Resident Judge of the Upper Tribunal")
-                .otherwise(col("JudicialStatus")).alias("JudicialStatus"),
-            col("Address1"),
-            col("Address2"),
-            col("Address3"),
-            col("Address4"),
-            col("Address5"),
-            col("Postcode"),
-            col("Telephone"),
-            col("Mobile"),
-            col("Email"),
-            col("BusinessAddress1"),
-            col("BusinessAddress2"),
-            col("BusinessAddress3"),
-            col("BusinessAddress4"),
-            col("BusinessAddress5"),
-            col("BusinessPostcode"),
-            col("BusinessTelephone"),
-            col("BusinessFax"),
-            col("BusinessEmail"),
-            col("JudicialInstructions"),
-            col("JudicialInstructionsDate"),
-            col("Notes"),
-            col("AdtclmnFirstCreatedDatetime"),
-            col("AdtclmnModifiedDatetime"),
-            col("SourceFileName"),
-            col("InsertedByProcessName")
+        dlt.read("bronze_adjudicator_et_hc_dnur").alias("adj").join(dlt.read("stg_joh_filtered").alias('flt'), col("adj.AdjudicatorId") == col("flt.AdjudicatorId"), "inner").select(
+            col("adj.AdjudicatorId"),
+            col("adj.Surname"),
+            col("adj.Forenames"),
+            col("adj.Title"),
+            col("adj.DateOfBirth"),
+            when(col("adj.CorrespondenceAddress") == 1, "Business").otherwise("Home").alias("CorrespondenceAddress"),
+            col("adj.ContactDetails"),
+            when(col("adj.ContactTelephone") == 1, "Business")
+                .when(col("adj.ContactTelephone") == 2, "Home")
+                .when(col("adj.ContactTelephone") == 3, "Mobile")
+                .otherwise(col("adj.ContactTelephone")).alias("ContactTelephone"),
+            col("adj.AvailableAtShortNotice"),
+            col("adj.DesignatedCentre"),
+            col("adj.EmploymentTerm"),
+            when(col("adj.FullTime") == 1,'Yes').otherwise("No").alias("FullTime"),
+            col("adj.IdentityNumber"),
+            col("adj.DateOfRetirement"),
+            col("adj.ContractEndDate"),
+            col("adj.ContractRenewalDate"),
+            col("adj.DoNotUse"),
+            col("adj.DoNotUseReason"),
+            when(col("adj.JudicialStatus") == 1, "Deputy President")
+                .when(col("adj.JudicialStatus") == 2, "Designated Immigration Judge")
+                .when(col("adj.JudicialStatus") == 3, "Immigration Judge")
+                .when(col("adj.JudicialStatus") == 4, "President")
+                .when(col("adj.JudicialStatus") == 5, "Senior Immigration Judge")
+                .when(col("adj.JudicialStatus") == 6, "Deputy Senior Immigration Judge")
+                .when(col("adj.JudicialStatus") == 7, "Senior President")
+                .when(col("adj.JudicialStatus") == 21, "Vice President of the Upper Tribunal IAAC")
+                .when(col("adj.JudicialStatus") == 22, "Designated Judge of the First-tier Tribunal")
+                .when(col("adj.JudicialStatus") == 23, "Judge of the First-tier Tribunal")
+                .when(col("adj.JudicialStatus") == 25, "Upper Tribunal Judge")
+                .when(col("adj.JudicialStatus") == 26, "Deputy Judge of the Upper Tribunal")
+                .when(col("adj.JudicialStatus") == 28, "Resident Judge of the First-tier Tribunal")
+                .when(col("adj.JudicialStatus") == 29, "Principle Resident Judge of the Upper Tribunal")
+                .otherwise(col("adj.JudicialStatus")).alias("JudicialStatus"),
+            col("adj.Address1"),
+            col("adj.Address2"),
+            col("adj.Address3"),
+            col("adj.Address4"),
+            col("adj.Address5"),
+            col("adj.Postcode"),
+            col("adj.Telephone"),
+            col("adj.Mobile"),
+            col("adj.Email"),
+            col("adj.BusinessAddress1"),
+            col("adj.BusinessAddress2"),
+            col("adj.BusinessAddress3"),
+            col("adj.BusinessAddress4"),
+            col("adj.BusinessAddress5"),
+            col("adj.BusinessPostcode"),
+            col("adj.BusinessTelephone"),
+            col("adj.BusinessFax"),
+            col("adj.BusinessEmail"),
+            col("adj.JudicialInstructions"),
+            col("adj.JudicialInstructionsDate"),
+            col("adj.Notes"),
+            col("adj.AdtclmnFirstCreatedDatetime"),
+            col("adj.AdtclmnModifiedDatetime"),
+            col("adj.SourceFileName"),
+            col("adj.InsertedByProcessName")
         )
     )
 
@@ -639,70 +663,70 @@ def silver_adjudicator_detail():
 @dlt.table(
     name="silver_history_detail",
     comment="Delta Live Silver Table combining JoHistory data with Users information.",
-    path=f"{silver_mnt}/ARIADM/ARM/silver_history_detail"
+    path=f"{silver_mnt}/silver_history_detail"
 )
 def silver_history_detail():
     return (
-        dlt.read("bronze_johistory_users").select(
-            col('AdjudicatorId'),
-            col('HistDate'),
-            when(col("HistType") == 1, "Adjournment")
-            .when(col("HistType") == 2, "Adjudicator Process")
-            .when(col("HistType") == 3, "Bail Process")
-            .when(col("HistType") == 4, "Change of Address")
-            .when(col("HistType") == 5, "Decisions")
-            .when(col("HistType") == 6, "File Location")
-            .when(col("HistType") == 7, "Interpreters")
-            .when(col("HistType") == 8, "Issue")
-            .when(col("HistType") == 9, "Links")
-            .when(col("HistType") == 10, "Listing")
-            .when(col("HistType") == 11, "SIAC Process")
-            .when(col("HistType") == 12, "Superior Court")
-            .when(col("HistType") == 13, "Tribunal Process")
-            .when(col("HistType") == 14, "Typing")
-            .when(col("HistType") == 15, "Parties edited")
-            .when(col("HistType") == 16, "Document")
-            .when(col("HistType") == 17, "Document Received")
-            .when(col("HistType") == 18, "Manual Entry")
-            .when(col("HistType") == 19, "Interpreter")
-            .when(col("HistType") == 20, "File Detail Changed")
-            .when(col("HistType") == 21, "Dedicated hearing centre changed")
-            .when(col("HistType") == 22, "File Linking")
-            .when(col("HistType") == 23, "Details")
-            .when(col("HistType") == 24, "Availability")
-            .when(col("HistType") == 25, "Cancel")
-            .when(col("HistType") == 26, "De-allocation")
-            .when(col("HistType") == 27, "Work Pattern")
-            .when(col("HistType") == 28, "Allocation")
-            .when(col("HistType") == 29, "De-Listing")
-            .when(col("HistType") == 30, "Statutory Closure")
-            .when(col("HistType") == 31, "Provisional Destruction Date")
-            .when(col("HistType") == 32, "Destruction Date")
-            .when(col("HistType") == 33, "Date of Service")
-            .when(col("HistType") == 34, "IND Interface")
-            .when(col("HistType") == 35, "Address Changed")
-            .when(col("HistType") == 36, "Contact Details")
-            .when(col("HistType") == 37, "Effective Date")
-            .when(col("HistType") == 38, "Centre Changed")
-            .when(col("HistType") == 39, "Appraisal Added")
-            .when(col("HistType") == 40, "Appraisal Removed")
-            .when(col("HistType") == 41, "Costs Deleted")
-            .when(col("HistType") == 42, "Credit/Debit Card Payment received")
-            .when(col("HistType") == 43, "Bank Transfer Payment received")
-            .when(col("HistType") == 44, "Chargeback Taken")
-            .when(col("HistType") == 45, "Remission request Rejected")
-            .when(col("HistType") == 46, "Refund Event Added")
-            .when(col("HistType") == 47, "WriteOff, Strikeout Write-Off or Threshold Write-off Event Added")
-            .when(col("HistType") == 48, "Aggregated Payment Taken")
-            .when(col("HistType") == 49, "Case Created")
-            .when(col("HistType") == 50, "Tracked Document")
-            .otherwise(col("HistType")).alias("HistType"),
-            col('UserName'),
-            col('Comment'),
-            col('AdtclmnFirstCreatedDatetime'),
-            col('AdtclmnModifiedDatetime'),
-            col('SourceFileName'),
-            col('InsertedByProcessName'),
+        dlt.read("bronze_johistory_users").alias("his").join(dlt.read("stg_joh_filtered").alias('flt'), col("his.AdjudicatorId") == col("flt.AdjudicatorId"), "inner").select(
+            col('his.AdjudicatorId'),
+            col('his.HistDate'),
+            when(col("his.HistType") == 1, "Adjournment")
+            .when(col("his.HistType") == 2, "Adjudicator Process")
+            .when(col("his.HistType") == 3, "Bail Process")
+            .when(col("his.HistType") == 4, "Change of Address")
+            .when(col("his.HistType") == 5, "Decisions")
+            .when(col("his.HistType") == 6, "File Location")
+            .when(col("his.HistType") == 7, "Interpreters")
+            .when(col("his.HistType") == 8, "Issue")
+            .when(col("his.HistType") == 9, "Links")
+            .when(col("his.HistType") == 10, "Listing")
+            .when(col("his.HistType") == 11, "SIAC Process")
+            .when(col("his.HistType") == 12, "Superior Court")
+            .when(col("his.HistType") == 13, "Tribunal Process")
+            .when(col("his.HistType") == 14, "Typing")
+            .when(col("his.HistType") == 15, "Parties edited")
+            .when(col("his.HistType") == 16, "Document")
+            .when(col("his.HistType") == 17, "Document Received")
+            .when(col("his.HistType") == 18, "Manual Entry")
+            .when(col("his.HistType") == 19, "Interpreter")
+            .when(col("his.HistType") == 20, "File Detail Changed")
+            .when(col("his.HistType") == 21, "Dedicated hearing centre changed")
+            .when(col("his.HistType") == 22, "File Linking")
+            .when(col("his.HistType") == 23, "Details")
+            .when(col("his.HistType") == 24, "Availability")
+            .when(col("his.HistType") == 25, "Cancel")
+            .when(col("his.HistType") == 26, "De-allocation")
+            .when(col("his.HistType") == 27, "Work Pattern")
+            .when(col("his.HistType") == 28, "Allocation")
+            .when(col("his.HistType") == 29, "De-Listing")
+            .when(col("his.HistType") == 30, "Statutory Closure")
+            .when(col("his.HistType") == 31, "Provisional Destruction Date")
+            .when(col("his.HistType") == 32, "Destruction Date")
+            .when(col("his.HistType") == 33, "Date of Service")
+            .when(col("his.HistType") == 34, "IND Interface")
+            .when(col("his.HistType") == 35, "Address Changed")
+            .when(col("his.HistType") == 36, "Contact Details")
+            .when(col("his.HistType") == 37, "Effective Date")
+            .when(col("his.HistType") == 38, "Centre Changed")
+            .when(col("his.HistType") == 39, "Appraisal Added")
+            .when(col("his.HistType") == 40, "Appraisal Removed")
+            .when(col("his.HistType") == 41, "Costs Deleted")
+            .when(col("his.HistType") == 42, "Credit/Debit Card Payment received")
+            .when(col("his.HistType") == 43, "Bank Transfer Payment received")
+            .when(col("his.HistType") == 44, "Chargeback Taken")
+            .when(col("his.HistType") == 45, "Remission request Rejected")
+            .when(col("his.HistType") == 46, "Refund Event Added")
+            .when(col("his.HistType") == 47, "WriteOff, Strikeout Write-Off or Threshold Write-off Event Added")
+            .when(col("his.HistType") == 48, "Aggregated Payment Taken")
+            .when(col("his.HistType") == 49, "Case Created")
+            .when(col("his.HistType") == 50, "Tracked Document")
+            .otherwise(col("his.HistType")).alias("HistType"),
+            col('his.UserName'),
+            col('his.Comment'),
+            col('his.AdtclmnFirstCreatedDatetime'),
+            col('his.AdtclmnModifiedDatetime'),
+            col('his.SourceFileName'),
+            col('his.InsertedByProcessName'),
         )
     )
 
@@ -716,10 +740,10 @@ def silver_history_detail():
 @dlt.table(
     name="silver_othercentre_detail",
     comment="Delta Live silver Table combining OtherCentre data with HearingCentre information.",
-    path=f"{silver_mnt}/ARIADM/ARM/silver_othercentre_detail"
+    path=f"{silver_mnt}/silver_othercentre_detail"
 )
 def silver_othercentre_detail():
-    return (dlt.read("bronze_othercentre_hearingcentre"))
+    return (dlt.read("bronze_othercentre_hearingcentre").alias("hc").join(dlt.read("stg_joh_filtered").alias('flt'), col("hc.AdjudicatorId") == col("flt.AdjudicatorId"), "inner").select("hc.*"))
 
 # COMMAND ----------
 
@@ -731,34 +755,34 @@ def silver_othercentre_detail():
 @dlt.table(
     name="silver_appointment_detail",
     comment="Delta Live Silver Table for Adjudicator Role data.",
-    path=f"{silver_mnt}/ARIADM/ARM/silver_appointment_detail"
+    path=f"{silver_mnt}/silver_appointment_detail"
 )
 def silver_appointment_detail():
     return (
-        dlt.read("bronze_adjudicator_role").select(
-            col('AdjudicatorId'),
-            when(col("Role") == 2, "Chairman")
-            .when(col("Role") == 5, "Adjudicator")
-            .when(col("Role") == 6, "Lay Member")
-            .when(col("Role") == 7, "Court Clerk")
-            .when(col("Role") == 8, "Usher")
-            .when(col("Role") == 9, "Qualified Member")
-            .when(col("Role") == 10, "Senior Immigration Judge")
-            .when(col("Role") == 11, "Immigration Judge")
-            .when(col("Role") == 12, "Non Legal Member")
-            .when(col("Role") == 13, "Designated Immigration Judge")
-            .when(col("Role") == 20, "Upper Tribunal Judge")
-            .when(col("Role") == 21, "Judge of the First-tier Tribunal")
-            .when(col("Role") == 23, "Designated Judge of the First-tier Tribunal")
-            .when(col("Role") == 24, "Upper Tribunal Judge acting As A Judge Of The First-tier Tribunal")
-            .when(col("Role") == 25, "Deputy Judge of the Upper Tribunal")
-            .otherwise(col("Role")).alias("Role"),
-            col('DateOfAppointment'),
-            col('EndDateOfAppointment'),
-            col('AdtclmnFirstCreatedDatetime'),
-            col('AdtclmnModifiedDatetime'),
-            col('SourceFileName'),
-            col('InsertedByProcessName')
+        dlt.read("bronze_adjudicator_role").alias("rol").join(dlt.read("stg_joh_filtered").alias('flt'), col("rol.AdjudicatorId") == col("flt.AdjudicatorId"), "inner").select(
+            col('rol.AdjudicatorId'),
+            when(col("rol.Role") == 2, "Chairman")
+            .when(col("rol.Role") == 5, "Adjudicator")
+            .when(col("rol.Role") == 6, "Lay Member")
+            .when(col("rol.Role") == 7, "Court Clerk")
+            .when(col("rol.Role") == 8, "Usher")
+            .when(col("rol.Role") == 9, "Qualified Member")
+            .when(col("rol.Role") == 10, "Senior Immigration Judge")
+            .when(col("rol.Role") == 11, "Immigration Judge")
+            .when(col("rol.Role") == 12, "Non Legal Member")
+            .when(col("rol.Role") == 13, "Designated Immigration Judge")
+            .when(col("rol.Role") == 20, "Upper Tribunal Judge")
+            .when(col("rol.Role") == 21, "Judge of the First-tier Tribunal")
+            .when(col("rol.Role") == 23, "Designated Judge of the First-tier Tribunal")
+            .when(col("rol.Role") == 24, "Upper Tribunal Judge acting As A Judge Of The First-tier Tribunal")
+            .when(col("rol.Role") == 25, "Deputy Judge of the Upper Tribunal")
+            .otherwise(col("rol.Role")).alias("Role"),
+            col('rol.DateOfAppointment'),
+            col('rol.EndDateOfAppointment'),
+            col('rol.AdtclmnFirstCreatedDatetime'),
+            col('rol.AdtclmnModifiedDatetime'),
+            col('rol.SourceFileName'),
+            col('rol.InsertedByProcessName')
         )
     )
 
@@ -857,35 +881,40 @@ def silver_appointment_detail():
 @dlt.table(
     name="silver_archive_metadata",
     comment="Delta Live Silver Table for Archive Metadata data.",
-    path=f"{silver_mnt}/ARIADM/ARM/silver_archive_metadata"
+    path=f"{silver_mnt}/silver_archive_metadata"
 )
 def silver_archive_metadata():
     return (
-        dlt.read("silver_adjudicator_detail").select(
-            col('AdjudicatorId').alias('client_identifier'),
-            date_format(coalesce(col('DateOfRetirement'), col('ContractEndDate'), col('AdtclmnFirstCreatedDatetime')), "yyyy-MM-dd'T'HH:mm:ss'Z'").alias("event_date"),
-            date_format(col('AdtclmnFirstCreatedDatetime'), "yyyy-MM-dd'T'HH:mm:ss'Z'").alias("recordDate"),
+        dlt.read("silver_adjudicator_detail").alias("adj").join(dlt.read("stg_joh_filtered").alias('flt'), col("adj.AdjudicatorId") == col("flt.AdjudicatorId"), "inner").select(
+            col('adj.AdjudicatorId').alias('client_identifier'),
+            date_format(coalesce(col('adj.DateOfRetirement'), col('adj.ContractEndDate'), col('adj.AdtclmnFirstCreatedDatetime')), "yyyy-MM-dd'T'HH:mm:ss'Z'").alias("event_date"),
+            date_format(col('adj.AdtclmnFirstCreatedDatetime'), "yyyy-MM-dd'T'HH:mm:ss'Z'").alias("recordDate"),
             lit("GBR").alias("region"),
             lit("ARIA").alias("publisher"),
             lit("ARIA Judicial Records").alias("record_class"),
             lit('IA_Judicial_Office').alias("entitlement_tag"),
-            col('Title').alias('bf_title'),
-            col('Forenames').alias('bf_forename'),
-            col('Surname').alias('bf_surname'),
-            col('DateOfBirth').alias('bf_dateofbirth'),
-            col('DesignatedCentre').alias('bf_designatedcentre')
+            col('adj.Title').alias('bf_title'),
+            col('adj.Forenames').alias('bf_forename'),
+            col('adj.Surname').alias('bf_surname'),
+            col('adj.DateOfBirth').alias('bf_dateofbirth'),
+            col('adj.DesignatedCentre').alias('bf_designatedcentre')
         )
     )
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Generate HTML
+# MAGIC ## Gold Outputs and Tracking DLT Table Creation
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Function Overview
+# MAGIC ### Generate HTML
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Function Overview
 # MAGIC This section details the function for generating HTML files and includes a sample execution.
 
 # COMMAND ----------
@@ -994,7 +1023,7 @@ def generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
     html_template = html_template.replace(f"{{{{HistoryPlaceHolder}}}}",History_Code)
 
     # Step 9: Write transformed HTML to lake 
-    file_name = f"{silver_mnt}/HTML/judicial_officer_{adjudicator_id}.html"
+    file_name = f"{gold_mnt}/HTML/judicial_officer_{adjudicator_id}.html"
     dbutils.fs.put(file_name, html_template, overwrite=True)
 
     print(f"HTML file created for Adjudicator with ID: {adjudicator_id} at {file_name}")
@@ -1020,16 +1049,16 @@ def generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
 #     # Return an empty DataFrame with the specified schema
 #     return dlt.read("silver_adjudicator_et_hc_dnur")
 
-#Example usage
-adjudicator_id = 1660
-# Load the necessary dataframes from Hive metastore
-df_stg_joh_filtered = spark.read.table("hive_metastore.ariadm_arm_joh.stg_joh_filtered")
-df_judicial_officer_details = spark.read.table("hive_metastore.ariadm_arm_joh.silver_adjudicator_detail")
-df_other_centres = spark.read.table("hive_metastore.ariadm_arm_joh.silver_othercentre_detail")
-df_roles = spark.read.table("hive_metastore.ariadm_arm_joh.silver_appointment_detail")
-df_history = spark.read.table("hive_metastore.ariadm_arm_joh.silver_history_detail")
+# Example usage
+# adjudicator_id = 1660
+# # Load the necessary dataframes from Hive metastore
+# df_stg_joh_filtered = spark.read.table("hive_metastore.ariadm_arm_joh.stg_joh_filtered")
+# df_judicial_officer_details = spark.read.table("hive_metastore.ariadm_arm_joh.silver_adjudicator_detail")
+# df_other_centres = spark.read.table("hive_metastore.ariadm_arm_joh.silver_othercentre_detail")
+# df_roles = spark.read.table("hive_metastore.ariadm_arm_joh.silver_appointment_detail")
+# df_history = spark.read.table("hive_metastore.ariadm_arm_joh.silver_history_detail")
 
-generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, df_other_centres, df_roles,df_history)
+# generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, df_other_centres, df_roles,df_history)
 
 
 
@@ -1037,7 +1066,7 @@ generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, df_ot
 
 # MAGIC %md
 # MAGIC
-# MAGIC ### Create silver_adjudicator_html_generation_status & Processing Adjudicator HTML's
+# MAGIC #### Create gold_adjudicator_html_generation_status & Processing Adjudicator HTML's
 # MAGIC This section is to prallel process the HTML and create atracker table with log information.
 
 # COMMAND ----------
@@ -1048,22 +1077,24 @@ from pyspark.sql.types import LongType
 @dlt.table(
     name="gold_joh_html_generation_status",
     comment="Delta Live Silver Table for Silver Adjudicator HTML Generation Status.",
-    path=f"{silver_mnt}/ARIADM/ARM/gold_joh_html_generation_status"
+    path=f"{gold_mnt}/gold_joh_html_generation_status"
 )
 def gold_joh_html_generation_status():
     
-    dlt.read("stg_joh_filtered")
-    dlt.read("silver_adjudicator_detail")
-    dlt.read("silver_othercentre_detail")
-    dlt.read("silver_appointment_detail")
-    dlt.read("silver_history_detail")
+    df_stg_joh_filtered = dlt.read("stg_joh_filtered")
+    df_judicial_officer_details =dlt.read("silver_adjudicator_detail")
+    df_other_centres = dlt.read("silver_othercentre_detail")
+    df_roles = dlt.read("silver_appointment_detail")
+    df_history =dlt.read("silver_history_detail")
 
     # Load the necessary dataframes from Hive metastore
-    df_stg_joh_filtered = spark.read.table("hive_metastore.ariadm_arm_joh.stg_joh_filtered")
-    df_judicial_officer_details = spark.read.table("hive_metastore.ariadm_arm_joh.silver_adjudicator_detail")
-    df_other_centres = spark.read.table("hive_metastore.ariadm_arm_joh.silver_othercentre_detail")
-    df_roles = spark.read.table("hive_metastore.ariadm_arm_joh.silver_appointment_detail")
-    df_history = spark.read.table("hive_metastore.ariadm_arm_joh.silver_history_detail")
+    if initial_Load == False:
+        print("Running non initial load")
+        df_stg_joh_filtered = spark.read.table("hive_metastore.ariadm_arm_joh.stg_joh_filtered")
+        df_judicial_officer_details = spark.read.table("hive_metastore.ariadm_arm_joh.silver_adjudicator_detail")
+        df_other_centres = spark.read.table("hive_metastore.ariadm_arm_joh.silver_othercentre_detail")
+        df_roles = spark.read.table("hive_metastore.ariadm_arm_joh.silver_appointment_detail")
+        df_history = spark.read.table("hive_metastore.ariadm_arm_joh.silver_history_detail")
    
 
     # Fetch the list of Adjudicator IDs from the table
@@ -1120,12 +1151,12 @@ def gold_joh_html_generation_status():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Generate JSON
+# MAGIC ### Generate JSON
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Function Overview
+# MAGIC #### Function Overview
 # MAGIC This section details the function for generating Json files and includes a sample execution.
 
 # COMMAND ----------
@@ -1232,8 +1263,8 @@ def generate_json_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
     }
 
     # Step 9: Write transformed JSON to lake 
-    json_dir = "/mnt/ingest00curatedsboxsilver/JSON"
-    file_name = f"{json_dir}/judicial_officer_{adjudicator_id}.json"
+    # json_dir = "{gold_mnt}/ARIADM/ARM/JSON"
+    file_name = f"{gold_mnt}/JSON/judicial_officer_{adjudicator_id}.json"
     
     # Convert the dictionary to a JSON string
     json_content = json.dumps(adjudicator_data, indent=4)
@@ -1247,21 +1278,21 @@ def generate_json_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
     return file_name, "Success"
 
 # Example usage
-adjudicator_id = 1660
-# Load the necessary dataframes from Hive metastore
-df_judicial_officer_details = spark.read.table("hive_metastore.ariadm_arm_joh.silver_adjudicator_detail")
-df_other_centres = spark.read.table("hive_metastore.ariadm_arm_joh.silver_othercentre_detail")
-df_roles = spark.read.table("hive_metastore.ariadm_arm_joh.silver_appointment_detail")
-df_history = spark.read.table("hive_metastore.ariadm_arm_joh.silver_history_detail")
+# adjudicator_id = 1660
+# # Load the necessary dataframes from Hive metastore
+# df_judicial_officer_details = spark.read.table("hive_metastore.ariadm_arm_joh.silver_adjudicator_detail")
+# df_other_centres = spark.read.table("hive_metastore.ariadm_arm_joh.silver_othercentre_detail")
+# df_roles = spark.read.table("hive_metastore.ariadm_arm_joh.silver_appointment_detail")
+# df_history = spark.read.table("hive_metastore.ariadm_arm_joh.silver_history_detail")
 
-generate_json_for_adjudicator(adjudicator_id, df_judicial_officer_details, df_other_centres, df_roles, df_history)
+# generate_json_for_adjudicator(adjudicator_id, df_judicial_officer_details, df_other_centres, df_roles, df_history)
 
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC
-# MAGIC ### Create silver_adjudicator_Json_generation_status & Processing Adjudicator Json's
+# MAGIC #### Create gold_adjudicator_Json_generation_status & Processing Adjudicator Json's
 # MAGIC This section is to prallel process the json and create atracker table with log information.
 
 # COMMAND ----------
@@ -1272,22 +1303,24 @@ generate_json_for_adjudicator(adjudicator_id, df_judicial_officer_details, df_ot
 @dlt.table(
     name="gold_joh_json_generation_status",
     comment="Delta Live Silver Table for Silver Adjudicator json Generation Status.",
-    path=f"{silver_mnt}/ARIADM/ARM/gold_joh_json_generation_status"
+    path=f"{gold_mnt}/gold_joh_json_generation_status"
 )
 def gold_joh_json_generation_status():
     
-    dlt.read("stg_joh_filtered")
-    dlt.read("silver_adjudicator_detail")
-    dlt.read("silver_othercentre_detail")
-    dlt.read("silver_appointment_detail")
-    dlt.read("silver_history_detail")
+    df_stg_joh_filtered = dlt.read("stg_joh_filtered")
+    df_judicial_officer_details =dlt.read("silver_adjudicator_detail")
+    df_other_centres = dlt.read("silver_othercentre_detail")
+    df_roles = dlt.read("silver_appointment_detail")
+    df_history =dlt.read("silver_history_detail")
 
     # Load the necessary dataframes from Hive metastore
-    df_stg_joh_filtered = spark.read.table("hive_metastore.ariadm_arm_joh.stg_joh_filtered")
-    df_judicial_officer_details = spark.read.table("hive_metastore.ariadm_arm_joh.silver_adjudicator_detail")
-    df_other_centres = spark.read.table("hive_metastore.ariadm_arm_joh.silver_othercentre_detail")
-    df_roles = spark.read.table("hive_metastore.ariadm_arm_joh.silver_appointment_detail")
-    df_history = spark.read.table("hive_metastore.ariadm_arm_joh.silver_history_detail")
+    if initial_Load == False:
+        print("Running non initial load")
+        df_stg_joh_filtered = spark.read.table("hive_metastore.ariadm_arm_joh.stg_joh_filtered")
+        df_judicial_officer_details = spark.read.table("hive_metastore.ariadm_arm_joh.silver_adjudicator_detail")
+        df_other_centres = spark.read.table("hive_metastore.ariadm_arm_joh.silver_othercentre_detail")
+        df_roles = spark.read.table("hive_metastore.ariadm_arm_joh.silver_appointment_detail")
+        df_history = spark.read.table("hive_metastore.ariadm_arm_joh.silver_history_detail")
    
 
     # Fetch the list of Adjudicator IDs from the table
@@ -1336,7 +1369,13 @@ def gold_joh_json_generation_status():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Generate a360 files
+# MAGIC ### Generate a360 files
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Function Overview
+# MAGIC This section details the function for generating A360 files and includes a sample execution.
 
 # COMMAND ----------
 
@@ -1353,13 +1392,9 @@ def gold_joh_json_generation_status():
 from pyspark.sql.functions import col
 from datetime import datetime
 import json
+from pyspark.sql.types import LongType, StringType, StructType, StructField
 
-adjudicator_id = 1660
-
-# Load the necessary dataframes from Hive metastore
-df_stg_joh_filtered = spark.read.table("hive_metastore.ariadm_arm_joh.stg_joh_filtered")
-df_joh_metadata = spark.read.table("hive_metastore.ariadm_arm_joh.silver_archive_metadata")
-
+# # Function to format dates
 def format_date(date_value):
     if isinstance(date_value, str):  # If the date is already a string, return as is
         return date_value
@@ -1367,67 +1402,153 @@ def format_date(date_value):
         return datetime.strftime(date_value, "%Y-%m-%dT%H:%M:%SZ")
     return None  # Return None if the date is invalid or not provided
 
-try:
-    df_metadata = df_joh_metadata.filter(col('client_identifier') == adjudicator_id).collect()
-    
+# Function to generate an .a360 file for a given adjudicator
+def generate_a360_file_for_adjudicator(adjudicator_id, df_joh_metadata):
+    try:
+        # Query the judicial officer details
+        df_metadata  = df_joh_metadata.filter(col('client_identifier') == adjudicator_id).collect()
+    except Exception as e:
+        print(f"Error querying Adjudicator ID: {adjudicator_id}, Error: {str(e)}")
+        return None, f"Error querying Adjudicator ID: {adjudicator_id}: {str(e)}"
+
     if not df_metadata:  # Check if any rows are returned
         print(f"No details found for Adjudicator ID: {adjudicator_id}")
+        return None, f"No details for Adjudicator ID: {adjudicator_id}"
+
+    # Convert the first Spark Row object to a dictionary
+    row_dict = df_metadata[0].asDict()
+
+    # Create metadata, HTML, and JSON strings
+    metadata_data = {
+        "operation": "create_record",
+        "relation_id": row_dict.get('client_identifier', ''),
+        "record_metadata": {
+            "publisher": row_dict.get('publisher', ''),
+            "record_class": row_dict.get('record_class', ''),
+            "region": row_dict.get('region', ''),
+            "recordDate": format_date(row_dict.get('recordDate')),
+            "event_date": format_date(row_dict.get('event_date')),
+            "client_identifier": row_dict.get('client_identifier', ''),
+            "bf_001": row_dict.get('bf_title', ''),
+            "bf_002": row_dict.get('bf_forename', ''),
+            "bf_003": row_dict.get('bf_surname', ''),
+            "bf_004": format_date(row_dict.get('bf_dateofbirth')),
+            "bf_005": row_dict.get('bf_designatedcentre', '')
+        }
+    }
+
+    html_data = {
+        "operation": "upload_new_file",
+        "relation_id": row_dict.get('client_identifier', ''),
+        "file_metadata": {
+            "publisher": row_dict.get('publisher', ''),
+            "dz_file_name": f"judicial_officer_{adjudicator_id}.html",
+            "file_tag": "html"
+        }
+    }
+
+    json_data = {
+        "operation": "upload_new_file",
+        "relation_id": row_dict.get('client_identifier', ''),
+        "file_metadata": {
+            "publisher": row_dict.get('publisher', ''),
+            "dz_file_name": f"judicial_officer_{adjudicator_id}.json",
+            "file_tag": "json"
+        }
+    }
+
+    # Convert dictionaries to JSON strings
+    metadata_data_str = json.dumps(metadata_data, separators=(',', ':'))
+    html_data_str = json.dumps(html_data, separators=(',', ':'))
+    json_data_str = json.dumps(json_data, separators=(',', ':'))
+
+    # Combine the data
+    all_data_str = f"{metadata_data_str}\n{html_data_str}\n{json_data_str}"
+
+    # # Now you have all three lines stored in `all_data_str`
+    # print(all_data_str)  # Or use `all_data_str` as needed
+
+    # Write to A360 file
+    file_name = f"{gold_mnt}/A360/judicial_officer_{adjudicator_id}.a360"
+    try:
+        dbutils.fs.put(file_name, all_data_str, overwrite=True)
+        print(f"A360 file created for Adjudicator with ID: {adjudicator_id} at {file_name}")
+        return file_name, "Success"
+    except Exception as e:
+        print(f"Error writing file for Adjudicator ID: {adjudicator_id}: {str(e)}")
+        return None, f"Error writing file: {str(e)}"
+    
+# Example usage
+# adjudicator_id = 1660
+
+# # Load necessary data from Hive tables
+# df_joh_metadata = spark.read.table("hive_metastore.ariadm_arm_joh.silver_archive_metadata")
+
+# generate_a360_file_for_adjudicator(adjudicator_id, df_joh_metadata)
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Create gold_adjudicator_Json_generation_status & Processing Adjudicator A360's
+# MAGIC This section is to prallel process the json and create atracker table with log information.
+
+# COMMAND ----------
+
+# Delta Live Table
+@dlt.table(
+    name="gold_joh_a360_generation_status",
+    comment="Delta Live Table for Silver Adjudicator .a360 File Generation Status.",
+    path=f"{gold_mnt}/gold_joh_a360_generation_status"
+)
+def gold_joh_a360_generation_status():
+
+    df_stg_joh_filtered = dlt.read("stg_joh_filtered")
+    df_joh_metadata = dlt.read("silver_archive_metadata")
+
+    
+    # Load necessary data from Hive tables
+    if initial_Load == False:
+        print("Running non initial load")
+        df_stg_joh_filtered = spark.read.table("hive_metastore.ariadm_arm_joh.stg_joh_filtered")
+        df_joh_metadata = spark.read.table("hive_metastore.ariadm_arm_joh.silver_archive_metadata")
+
+    # Fetch the list of Adjudicator IDs
+    adjudicator_ids_list = df_stg_joh_filtered.select('AdjudicatorId').distinct().rdd.flatMap(lambda x: x).collect()
+
+    result_list = []
+
+    # Use ThreadPoolExecutor for parallel processing
+    with ThreadPoolExecutor() as executor:
+        futures = {
+            executor.submit(generate_a360_file_for_adjudicator, adjudicator_id, df_joh_metadata): adjudicator_id
+            for adjudicator_id in adjudicator_ids_list
+        }
+
+        for future in as_completed(futures):
+            adjudicator_id = futures[future]
+            try:
+                file_name, status = future.result()
+                result_list.append((int(adjudicator_id), str(file_name), str(status)))
+            except Exception as e:
+                print(f"Error generating .a360 for Adjudicator ID {adjudicator_id}: {str(e)}")
+                result_list.append((int(adjudicator_id), None, f"Error: {str(e)}"))
+
+    if result_list:
+        result_df = spark.createDataFrame(result_list, ["AdjudicatorId", "GeneratedFilePath", "Status"])
     else:
-        # Convert the first Spark Row object to a dictionary
-        row_dict = df_metadata[0].asDict()
+        empty_schema = StructType([
+            StructField("AdjudicatorId", LongType(), True),
+            StructField("GeneratedFilePath", StringType(), True),
+            StructField("Status", StringType(), True)
+        ])
+        result_df = spark.createDataFrame([], empty_schema)
 
-        # Create a dictionary for the adjudicator details
-        metadata_data = {
-            "operation": "create_record",
-            "relation_id": row_dict.get('client_identifier', ''),
-            "record_metadata": {
-                "publisher": row_dict.get('publisher', ''),
-                "record_class": row_dict.get('record_class', ''),
-                "region": row_dict.get('region', ''),
-                "recordDate": format_date(row_dict.get('recordDate')),
-                "event_date": format_date(row_dict.get('event_date')),
-                "client_identifier": row_dict.get('client_identifier', ''),
-                "bf_001": row_dict.get('bf_title', ''),
-                "bf_002": row_dict.get('bf_forename', ''),
-                "bf_003": row_dict.get('bf_surname', ''),
-                "bf_004": format_date(row_dict.get('bf_dateofbirth')),
-                "bf_005": row_dict.get('bf_designatedcentre', '')
-            }
-        }
+    return result_df
 
-        html_data = {
-            "operation": "upload_new_file",
-            "relation_id": row_dict.get('client_identifier', ''),
-            "file_metadata": {
-                "publisher": row_dict.get('publisher', ''),
-                "dz_file_name": f"judicial_officer_{adjudicator_id}.html",
-                "file_tag": "html"
-            }
-        }
 
-        json_data = {
-            "operation": "upload_new_file",
-            "relation_id": row_dict.get('client_identifier', ''),
-            "file_metadata": {
-                "publisher": row_dict.get('publisher', ''),
-                "dz_file_name": f"judicial_officer_{adjudicator_id}.json",
-                "file_tag": "json"
-            }
-        }
+# COMMAND ----------
 
-        # Convert dictionaries to compact single-line strings
-        metadata_data_str = json.dumps(metadata_data, separators=(',', ':'))
-        html_data_str = json.dumps(html_data, separators=(',', ':'))
-        json_data_str = json.dumps(json_data, separators=(',', ':'))
-
-        # Concatenate the three lines into a single variable
-        all_data_str = f"{metadata_data_str}\n{html_data_str}\n{json_data_str}"
-
-        # Now you have all three lines stored in `all_data_str`
-        print(all_data_str)  # Or use `all_data_str` as needed
-
-except IndexError:
-    print(f"No details found for Adjudicator ID: {adjudicator_id}")
-except Exception as e:
-    print(f"An error occurred: {e}")
-
+# %sql
+# drop schema hive_metastore.ariadm_arm_joh cascade;

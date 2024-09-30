@@ -9,7 +9,7 @@
 # MAGIC       </tr>
 # MAGIC       <tr>
 # MAGIC          <td style='text-align: left; '><b>Description: </b></td>
-# MAGIC          <td>Notebook to create a set of HTML each represenring the historicak data about judges held in ARIA</td>
+# MAGIC          <td>Notebook to generate a set of HTML, JSON, and A360 files, each representing the data about judges stored in ARIA.</td>
 # MAGIC       </tr>
 # MAGIC       <tr>
 # MAGIC          <td style='text-align: left; '><b>First Created: </b></td>
@@ -58,6 +58,11 @@ spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
 
 # MAGIC %md
 # MAGIC ## Set Variables
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Please note that running the DLT pipeline with the parameter `initial_load = true` will ensure the creation of the corresponding Hive tables. However, during this stage, none of the gold outputs (HTML, JSON, and A360) are processed. To generate the gold outputs, a secondary run with `initial_load = true` is required.
 
 # COMMAND ----------
 
@@ -893,11 +898,11 @@ def silver_archive_metadata():
             lit("ARIA").alias("publisher"),
             lit("ARIA Judicial Records").alias("record_class"),
             lit('IA_Judicial_Office').alias("entitlement_tag"),
-            col('adj.Title').alias('bf_title'),
-            col('adj.Forenames').alias('bf_forename'),
-            col('adj.Surname').alias('bf_surname'),
-            col('adj.DateOfBirth').alias('bf_dateofbirth'),
-            col('adj.DesignatedCentre').alias('bf_designatedcentre')
+            col('adj.Title').alias('bf_001'),
+            col('adj.Forenames').alias('bf_002'),
+            col('adj.Surname').alias('bf_003'),
+            col('adj.DateOfBirth').alias('bf_004'),
+            col('adj.DesignatedCentre').alias('bf_005')
         )
     )
 
@@ -922,6 +927,19 @@ def silver_archive_metadata():
 from pyspark.sql.functions import col
 from datetime import datetime
 
+
+# Step 5: Date formatting helper
+def format_date_iso(date_value):
+    if date_value:
+        return datetime.strftime(date_value, "%Y-%m-%d")
+    return ""
+    # return "dd-MM-yyyy"
+
+def format_date(date_value):
+    if date_value:
+        return datetime.strftime(date_value, "%d/%m/%Y")
+    return ""
+
 # Define the function to generate HTML for a given adjudicator
 def generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, df_other_centres, df_roles,df_history):
     # Step 1: Query the judicial officer details
@@ -945,11 +963,6 @@ def generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
     with open(html_template_path, "r") as f:
         html_template = "".join([l for l in f])
 
-    # Step 5: Date formatting helper
-    def format_date(date_value):
-        if date_value:
-            return datetime.strftime(date_value, "%Y-%m-%d")
-        return "yyyy-MM-dd"
 
     # Step 6: Convert the Spark Row object to a dictionary
     row_dict = judicial_officer_details.asDict()  # Convert Spark Row object to a dictionary
@@ -959,7 +972,7 @@ def generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
         "{{Surname}}": str(row_dict.get('Surname', '') or ''),
         "{{Title}}": str(row_dict.get('Title', '') or ''),
         "{{Forenames}}": str(row_dict.get('Forenames', '') or ''),
-        "{{DateOfBirth}}": format_date(row_dict.get('DateOfBirth')),
+        "{{DateOfBirth}}": format_date_iso(row_dict.get('DateOfBirth')),
         "{{CorrespondenceAddress}}": str(row_dict.get('CorrespondenceAddress', '') or ''),
         "{{Telephone}}": str(row_dict.get('ContactTelephone', '') or ''),
         "{{ContactDetails}}": str(row_dict.get('ContactDetails', '') or ''),
@@ -967,9 +980,9 @@ def generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
         "{{EmploymentTerm}}": str(row_dict.get('EmploymentTerm', '') or ''),
         "{{FullTime}}": str(row_dict.get('FullTime', '') or ''),
         "{{IdentityNumber}}": str(row_dict.get('IdentityNumber', '') or ''),
-        "{{DateOfRetirement}}": format_date(row_dict.get('DateOfRetirement')),
-        "{{ContractEndDate}}": format_date(row_dict.get('ContractEndDate')),
-        "{{ContractRenewalDate}}": format_date(row_dict.get('ContractRenewalDate')),
+        "{{DateOfRetirement}}": format_date_iso(row_dict.get('DateOfRetirement')),
+        "{{ContractEndDate}}": format_date_iso(row_dict.get('ContractEndDate')),
+        "{{ContractRenewalDate}}": format_date_iso(row_dict.get('ContractRenewalDate')),
         "{{DoNotUseReason}}": str(row_dict.get('DoNotUseReason', '') or ''),
         "{{JudicialStatus}}": str(row_dict.get('JudicialStatus', '') or ''),
         "{{Address1}}": str(row_dict.get('Address1', '') or ''),
@@ -990,7 +1003,7 @@ def generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
         "{{BusinessFax}}": str(row_dict.get('BusinessFax', '') or ''),
         "{{BusinessEmail}}": str(row_dict.get('BusinessEmail', '') or ''),
         "{{JudicialInstructions}}": str(row_dict.get('JudicialInstructions', '') or ''),
-        "{{JudicialInstructionsDate}}": format_date(row_dict.get('JudicialInstructionsDate')),
+        "{{JudicialInstructionsDate}}": format_date_iso(row_dict.get('JudicialInstructionsDate')),
         "{{Notes}}": str(row_dict.get('Notes', '') or ''),
     }
     # Print dict
@@ -1012,13 +1025,14 @@ def generate_html_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
     for i, role in enumerate(roles, start=1):
         line = f"<tr><td id=\"midpadding\">{i}</td><td id=\"midpadding\">{role['Role']}</td><td id=\"midpadding\">{format_date(role['DateOfAppointment'])}</td><td id=\"midpadding\">{format_date(role['EndDateOfAppointment'])}</td></tr>"
         roles_code += line + '\n'
+        
     html_template = html_template.replace("{{AppointmentPlaceHolder}}", roles_code)
 
 
     # History Details
     History_Code = ''
     for index,row in enumerate(history,start=1):
-        line = f"<tr><td id=\"midpadding\">{row['HistDate']}</td><td id=\"midpadding\">{row['HistType']}</td><td id=\"midpadding\">{row['UserName']}</td><td id=\"midpadding\">{row['Comment']}</td></tr>"
+        line = f"<tr><td id=\"midpadding\">{format_date(row['HistDate'])}</td><td id=\"midpadding\">{row['HistType']}</td><td id=\"midpadding\">{row['UserName']}</td><td id=\"midpadding\">{row['Comment']}</td></tr>"
         History_Code += line + '\n'
     html_template = html_template.replace(f"{{{{HistoryPlaceHolder}}}}",History_Code)
 
@@ -1105,7 +1119,7 @@ def gold_joh_html_generation_status():
     result_list = []
 
     # Use ThreadPoolExecutor for parallel processing
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {
             executor.submit(generate_html_for_adjudicator, adjudicator_id, 
                              df_judicial_officer_details, df_other_centres, df_roles, df_history): adjudicator_id
@@ -1165,6 +1179,12 @@ import json
 from pyspark.sql.functions import col
 from datetime import datetime
 
+# Step 5: Date formatting helper
+def format_date(date_value):
+    if date_value:
+        return datetime.strftime(date_value, "%Y-%m-%d")
+    return "yyyy-MM-dd"
+
 # Define the function to generate JSON for a given adjudicator
 def generate_json_for_adjudicator(adjudicator_id, df_judicial_officer_details, df_other_centres, df_roles, df_history):
     # Step 1: Query the judicial officer details
@@ -1183,11 +1203,7 @@ def generate_json_for_adjudicator(adjudicator_id, df_judicial_officer_details, d
     # Step 4: Query the history details
     history = df_history.filter(col('AdjudicatorId') == adjudicator_id).select('HistDate', col('HistType').alias('HistType'), 'UserName', 'Comment').collect()
 
-    # Step 5: Date formatting helper
-    def format_date(date_value):
-        if date_value:
-            return datetime.strftime(date_value, "%Y-%m-%d")
-        return "yyyy-MM-dd"
+   
 
     # Step 6: Convert the Spark Row object to a dictionary
     row_dict = judicial_officer_details.asDict()  # Convert Spark Row object to a dictionary
@@ -1331,7 +1347,7 @@ def gold_joh_json_generation_status():
     result_list = []
 
     # Use ThreadPoolExecutor for parallel processing
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {
             executor.submit(generate_json_for_adjudicator, adjudicator_id, 
                              df_judicial_officer_details, df_other_centres, df_roles, df_history): adjudicator_id
@@ -1429,11 +1445,11 @@ def generate_a360_file_for_adjudicator(adjudicator_id, df_joh_metadata):
             "recordDate": format_date(row_dict.get('recordDate')),
             "event_date": format_date(row_dict.get('event_date')),
             "client_identifier": row_dict.get('client_identifier', ''),
-            "bf_001": row_dict.get('bf_title', ''),
-            "bf_002": row_dict.get('bf_forename', ''),
-            "bf_003": row_dict.get('bf_surname', ''),
-            "bf_004": format_date(row_dict.get('bf_dateofbirth')),
-            "bf_005": row_dict.get('bf_designatedcentre', '')
+            "bf_001": row_dict.get('bf_001', ''),
+            "bf_002": row_dict.get('bf_002', ''),
+            "bf_003": row_dict.get('bf_003', ''),
+            "bf_004": format_date(row_dict.get('bf_004')),
+            "bf_005": row_dict.get('bf_005', '')
         }
     }
 
@@ -1520,7 +1536,7 @@ def gold_joh_a360_generation_status():
     result_list = []
 
     # Use ThreadPoolExecutor for parallel processing
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {
             executor.submit(generate_a360_file_for_adjudicator, adjudicator_id, df_joh_metadata): adjudicator_id
             for adjudicator_id in adjudicator_ids_list

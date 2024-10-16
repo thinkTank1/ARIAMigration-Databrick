@@ -833,7 +833,7 @@ def process_partition(partition, tribunaldecision_detail_bc):
     comment="Delta Live Table for Gold Tribunal Decision HTML Generation Status.",
     path=f"{gold_mnt}/gold_td_html_generation_status"
 )
-def gold_td_html_generation_status(initial_Load=False):
+def gold_td_html_generation_status():
     
     # Load necessary dataframes from DLT or Hive metastore
     df_archive_metadata = dlt.read("silver_archive_metadata")
@@ -1097,7 +1097,7 @@ def generate_json_for_tribunaldecision(CaseNo, Forenames, Name, tribunaldecision
 # Function to process each partition of data
 def process_partition_json(partition, tribunaldecision_detail_bc):
     results = []
-    
+
     for row in partition:
         CaseNo = row['CaseNo']
         Forenames = row['Forenames']
@@ -1128,7 +1128,7 @@ def process_partition_json(partition, tribunaldecision_detail_bc):
     comment="Delta Live Table for Gold Tribunal Decision JSON Generation Status.",
     path=f"{gold_mnt}/gold_td_json_generation_status"
 )
-def gold_td_json_generation_status(initial_Load=False):
+def gold_td_json_generation_status():
     
     # Load the necessary dataframes from DLT or Hive metastore
     df_archive_metadata = dlt.read("silver_archive_metadata")

@@ -4,6 +4,12 @@ from pyspark.sql.functions import when, col,coalesce, current_timestamp, lit, da
 from pyspark.sql.types import *
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from pyspark.dbutils import DBUtils
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.getOrCreate()
+dbutils = DBUtils(spark)
+
 
 # Function to recursively list all files in the ADLS directory
 def deep_ls(path: str, depth: int = 0, max_depth: int = 10) -> list:
@@ -42,7 +48,7 @@ def extract_timestamp(file_path):
     return timestamp_str
 
 # Main function to read the latest parquet file, add audit columns, and return the DataFrame
-def read_latest_parquet(folder_name: str, view_name: str, process_name: str, view = 'temp', base_path: str = "/mnt/ingest00landingsboxlanding/") -> "DataFrame":
+def read_latest_parquet(folder_name: str, view_name: str, process_name: str, base_path: str = "/mnt/ingest00landingsboxlanding/") -> "DataFrame":
     """
     Reads the latest .parquet file from a specified folder, adds audit columns, creates a temporary Spark view, and returns the DataFrame.
     
@@ -82,15 +88,9 @@ def read_latest_parquet(folder_name: str, view_name: str, process_name: str, vie
            .withColumn("InsertedByProcessName", lit(process_name))
     
     # Create or replace a temporary view
-    if view == 'temp':
-        df.createOrReplaceTempView(view_name)
-    elif view == 'global_temp':
-        df.createOrReplaceGlobalTempView(view_name)
-    elif view == 'materialized':
-        df.write.mode("overwrite").saveAsTable(view_name)
+    df.createOrReplaceTempView(view_name)
     
     print(f"Loaded the latest file for {folder_name} into view {view_name} with audit columns")
     
     # Return the DataFrame
     return df
-

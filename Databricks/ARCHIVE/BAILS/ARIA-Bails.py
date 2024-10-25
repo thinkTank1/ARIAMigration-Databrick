@@ -40,9 +40,10 @@
 
 # run custom functions
 import sys
-sys.path.append('../Databricks/Utility/')
+import os
+# Append the parent directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..','..')))
 
-from custom_functions import *
 import dlt
 import json
 from pyspark.sql.functions import when, col,coalesce, current_timestamp, lit, date_format
@@ -56,24 +57,7 @@ from datetime import datetime
 
 # COMMAND ----------
 
-import os
-
-current_dir = dbutils.entry_point.getDbutils().notebook().getContext().notebookPath().get()
-
-base_path = "/".join(current_dir.split("/")[:-3])
-
-util_path = base_path + "/Utility"
-
-util_path
-
-print(f"/workspace{util_path}/test_func")
-
-/Workspace/Users/ara.islam1@hmcts.net/ARIAMigration-Databrick/Databricks/Utility/test_func
-
-
-# COMMAND ----------
-
-read_latest_parquet("AppealCase","tv_AppealCase","ARIA_ARM_BAIL")
+from SharedFunctionsLib.custom_functions import *
 
 # COMMAND ----------
 
@@ -83,10 +67,6 @@ landing_mnt = "/mnt/ingest00landingsboxlanding/"
 bronze_mnt = "/mnt/ingest00curatedsboxbronze/ARIADM/ARM/JOH"
 silver_mnt = "/mnt/ingest00curatedsboxsilver/ARIADM/ARM/JOH"
 gold_mnt = "/mnt/ingest00curatedsboxgold/ARIADM/ARM/JOH"
-
-# COMMAND ----------
-
-read_latest_parquet("AdjudicatorRole", "tv_AdjudicatorRole", "ARIA_ARM_JOH_ARA")
 
 # COMMAND ----------
 

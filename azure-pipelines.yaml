@@ -22,7 +22,7 @@ variables:
       runTests: true
 
 stages:
-  - stage: Test Permissions
+  - stage: Test_Permissions
     displayName: 'Test Agent Permissions'
     jobs:
     - template: pipeline/jobs/deploy.yaml

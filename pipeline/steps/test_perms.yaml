@@ -1,0 +1,19 @@
+parameters:
+  pythonVersion: ''
+  env: ''
+
+steps:
+- task: AzureCLI@2
+  displayName: 'Initialise and run Python'
+  inputs:
+    azureSubscription: 'DTS-DATAINGEST-SBOX'
+    scriptType: bash
+    scriptLocation: inlineScript
+    inlineScript: |
+      set -e
+      source working_dir/bin/activate
+      python${{ parameters.pythonVersion }} --version
+      export PYTHONPATH="${PYTHONPATH}:/./"
+      python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/ARIAMigration-Databrick/pipeline/scripts/pipeline_test.py
+
+    workingDirectory: 'ARIAMigration-Databrick/'

@@ -23,19 +23,9 @@ variables:
 
 stages:
 - ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/pull/')) }}:
-  - stage: Validate
-    displayName: 'Validate Azure Functions and Databricks Notebooks'
+  - stage: Test Permissions
+    displayName: 'Test Agent Permissions'
     jobs:
-    - template: templates/jobs/validate-azure-functions.yml
-    - template: templates/jobs/validate-databricks-notebooks.yml
-
-- stage: BuildWheel
-  displayName: 'Build Python Wheel for Shared Code'
-  jobs:
-    - template: templates/jobs/build-python-wheel.yml
-
-- stage: Deploy
-  displayName: 'Deploy to ${{ upper(parameters.env) }}'
-  jobs:
-  - template: templates/jobs/deploy-azure-functions.yml
-  - template: templates/jobs/deploy-databricks-notebooks.yml
+    - template: pipeline/jobs/test_perms.yaml
+      parameters:
+        pythonVersion: 3.10

@@ -22,7 +22,6 @@ variables:
       runTests: true
 
 stages:
-- ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/pull/')) }}:
   - stage: Test Permissions
     displayName: 'Test Agent Permissions'
     jobs:

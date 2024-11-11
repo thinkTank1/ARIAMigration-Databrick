@@ -1,0 +1,41 @@
+parameters:
+- name: runTests
+  type: boolean
+  default: true
+- name: env
+  displayName: Environment
+  type: string
+  default: 'sbox'
+  values:
+  - sbox
+
+name: ARIA Data Migration CI Pipeline - ${{ parameters.env }}
+trigger:
+- master
+
+variables:
+  resourceGroupName: ingest00-main-${{ parameters.env }}
+  agentPool: hmcts-ss-${{ parameters.env }}
+  ${{ if eq(parameters.env, 'prod') }}:
+      runTests: false
+  ${{ else }}:
+      runTests: true
+
+stages:
+- ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/pull/')) }}:
+  - stage: Validate
+    displayName: 'Validate Azure Functions and Databricks Notebooks'
+    jobs:
+    - template: templates/jobs/validate-azure-functions.yml
+    - template: templates/jobs/validate-databricks-notebooks.yml
+
+- stage: BuildWheel
+  displayName: 'Build Python Wheel for Shared Code'
+  jobs:
+    - template: templates/jobs/build-python-wheel.yml
+
+- stage: Deploy
+  displayName: 'Deploy to ${{ upper(parameters.env) }}'
+  jobs:
+  - template: templates/jobs/deploy-azure-functions.yml
+  - template: templates/jobs/deploy-databricks-notebooks.yml

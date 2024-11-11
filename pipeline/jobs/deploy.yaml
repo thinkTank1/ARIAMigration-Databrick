@@ -9,8 +9,6 @@ parameters:
 jobs:
 - job: Deploy_App
   pool: ${{ parameters.agentPool }}
-  variables:
-  - group: dc-env-variables
 
   steps:
   - template: pipeline/steps/initialise-python.yaml

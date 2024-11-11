@@ -10,7 +10,7 @@ jobs:
 - job: Deploy_App
   pool: ${{ parameters.agentPool }}
   steps:
-  - template: pipeline/steps/initialise-python.yaml
+  - template: ../steps/initialise-python.yaml
     parameters:
       pythonVersion: 3.10
       env: ${{ parameters.env }}

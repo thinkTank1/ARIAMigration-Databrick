@@ -1,0 +1,29 @@
+parameters:
+  agentPool: ''
+  env: ''
+  runTests: true
+  runIntegrationTests: ''
+  runEndToEndTests: false
+  deployConfig: false
+  targetFile: ''
+
+##
+# Deploy the specified app
+##
+jobs:
+- job: Deploy_App
+  pool: ${{ parameters.agentPool }}
+  variables:
+  - group: dc-env-variables
+
+  steps:
+  - template: pipeline/steps/initialise-python.yaml@data-catalogue-core
+    parameters:
+      pythonVersion: 3.10
+      env: ${{ parameters.env }}
+      mainRepositoryName: ARIAMigration-Databrick
+  - template: ../steps/run-yaml-validation.yaml
+    parameters:
+      pythonVersion: 3.10
+      env: ${{ parameters.env }}
+      targetFile: ${{ parameters.targetFile }}

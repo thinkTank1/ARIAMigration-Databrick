@@ -5,9 +5,9 @@ parameters:
 - name: env
   displayName: Environment
   type: string
-  default: 'sbox'
+  default: 'SBOX'
   values:
-  - sbox
+  - SBOX
 
 name: ARIA Data Migration CI Pipeline - ${{ parameters.env }}
 trigger:

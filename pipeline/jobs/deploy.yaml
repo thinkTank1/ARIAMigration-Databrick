@@ -1,11 +1,7 @@
 parameters:
   agentPool: ''
+  pythonVersion: ''
   env: ''
-  runTests: true
-  runIntegrationTests: ''
-  runEndToEndTests: false
-  deployConfig: false
-  targetFile: ''
 
 ##
 # Deploy the specified app

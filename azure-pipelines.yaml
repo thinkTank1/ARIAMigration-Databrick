@@ -27,5 +27,6 @@ stages:
     jobs:
     - template: pipeline/jobs/deploy.yaml
       parameters:
+        agentPool: $(agentPool)
         pythonVersion: 3.10
         env: ${{ parameters.env }}

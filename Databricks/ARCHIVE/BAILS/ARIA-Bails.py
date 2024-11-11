@@ -1,4 +1,13 @@
 # Databricks notebook source
+# # Use the dbutils.library.install function
+# # Use pip to install the library
+# %pip install /Workspace/Repos/ara.islam1@hmcts.net/ARIAMigration-Databrick/Databricks/SharedFunctionsLib/dist/ARIAFUNCITONS-0.0.1-py3-none-any.whl
+
+
+# dbutils.library.restartPython()  # Restart the Python process to pick up the new library
+
+# COMMAND ----------
+
 # MAGIC %md 
 # MAGIC
 # MAGIC # Bail Cases
@@ -38,23 +47,143 @@
 
 # COMMAND ----------
 
-# run custom functions
-import sys
-import os
-# Append the parent directory to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..','..')))
 
 import dlt
 import json
-from pyspark.sql.functions import when, col,coalesce, current_timestamp, lit, date_format, max,date_add
+from pyspark.sql.functions import when, col,coalesce, current_timestamp, lit, date_format
+# from pyspark.sql.functions import *
 from pyspark.sql.types import *
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from pyspark.sql import DataFrame
+
+# COMMAND ----------
+
+def check_for_duplicates(df:DataFrame, col:str="CaseNo"):
+    """
+    Checks for duplicate records in the specified column of the DataFrame. Raises a ValueError if duplicates are found.
+
+    :param df: The DataFrame to check, typically read from a Hive table.
+    :param col: The column name to check for duplicates.
+    :raises ValueError: If duplicates are found in the specified column.
+    """
+    duplicates_count = df.groupBy(F.col(col)).count().filter(F.col("count")>1).count()
+    if duplicates_count > 0:
+        raise ValueError(f"Duplicate records found for {col} in the dataset")
+
+# COMMAND ----------
+
+
+# from pyspark.sql.functions import current_timestamp, lit
+
+# Function to recursively list all files in the ADLS directory
+def deep_ls(path: str, depth: int = 0, max_depth: int = 10) -> list:
+    """
+    Recursively list all files and directories in ADLS directory.
+    Returns a list of all paths found.
+    """
+    output = set()  # Using a set to avoid duplicates
+    if depth > max_depth:
+        return output
+
+    try:
+        children = dbutils.fs.ls(path)
+        for child in children:
+            if child.path.endswith(".parquet"):
+                output.add(child.path.strip())  # Add only .parquet files to the set
+
+            if child.isDir:
+                # Recursively explore directories
+                output.update(deep_ls(child.path, depth=depth + 1, max_depth=max_depth))
+
+    except Exception as e:
+        print(f"Error accessing {path}: {e}")
+
+    return list(output)  # Convert the set back to a list before returning
+
+# Function to extract timestamp from the file path
+def extract_timestamp(file_path):
+    """
+    Extracts timestamp from the parquet file name based on an assumed naming convention.
+    """
+    # Split the path and get the filename part
+    filename = file_path.split('/')[-1]
+    # Extract the timestamp part from the filename
+    timestamp_str = filename.split('_')[-1].replace('.parquet', '')
+    return timestamp_str
+
+# Main function to read the latest parquet file, add audit columns, and return the DataFrame
+def read_latest_parquet(folder_name: str, view_name: str, process_name: str, base_path: str = "/mnt/ingest00landingsboxlanding/") -> "DataFrame":
+    """
+    Reads the latest .parquet file from a specified folder, adds audit columns, creates a temporary Spark view, and returns the DataFrame.
+    
+    Parameters:
+    - folder_name (str): The name of the folder to look for the .parquet files (e.g., "AdjudicatorRole").
+    - view_name (str): The name of the temporary view to create (e.g., "tv_AdjudicatorRole").
+    - process_name (str): The name of the process adding the audit information (e.g., "ARIA_ARM_JOH").
+    - base_path (str): The base path for the folders in the data lake.
+    
+    Returns:
+    - DataFrame: The DataFrame created from the latest .parquet file with added audit columns.
+    """
+    # Construct the full folder path
+    folder_path = f"{base_path}{folder_name}/full/"
+    
+    # List all .parquet files in the folder
+    all_files = deep_ls(folder_path)
+    
+    # Ensure that files were found
+    if not all_files:
+        print(f"No .parquet files found in {folder_path}")
+        return None
+    
+    # Find the latest .parquet file
+    latest_file = max(all_files, key=extract_timestamp)
+    
+    # Print the latest file being loaded for logging purposes
+    print(f"Reading latest file: {latest_file}")
+    
+    # Read the latest .parquet file into a DataFrame
+    df = spark.read.option("inferSchema", "true").parquet(latest_file)
+    
+    # Add audit columns
+    df = df.withColumn("AdtclmnFirstCreatedDatetime", current_timestamp()) \
+           .withColumn("AdtclmnModifiedDatetime", current_timestamp()) \
+           .withColumn("SourceFileName", lit(latest_file)) \
+           .withColumn("InsertedByProcessName", lit(process_name))
+    
+    # Create or replace a temporary view
+    df.createOrReplaceTempView(view_name)
+    
+    print(f"Loaded the latest file for {folder_name} into view {view_name} with audit columns")
+    
+    # Return the DataFrame
+    return df
+
+
 
 
 # COMMAND ----------
 
-from SharedFunctionsLib.custom_functions import *
+# # run custom functions
+# import sys
+# import os
+# # Append the parent directory to sys.path
+# sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..','..')))
+
+# import dlt
+# import json
+# from pyspark.sql.functions import when, col,coalesce, current_timestamp, lit, date_format, max,date_add
+# from pyspark.sql.types import *
+# from concurrent.futures import ThreadPoolExecutor, as_completed
+# from datetime import datetime
+
+# from SharedFunctionsLib.custom_functions import *
+
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 
@@ -350,6 +479,7 @@ def bail_case_surety():
 @dlt.table(
     name='bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang',
     comment='ARIA Migration Archive Bails cases bronze table',
+    partition_cols=["CaseNo"],
     path=f"{bronze_mnt}/bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang"
 )
 def bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang():
@@ -380,7 +510,12 @@ def bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang():
             col("ac.RemovalDate"),
             col("ac.HOInterpreter"),
             col("ac.Interpreter"),
-            col("ac.CountryId"),
+            col("ac.CountryId").alias("CountryOfTravelOrigin"),
+            col("ac.PortId").alias("PortOfEntry"),
+            col("ac.NationalityId").alias("Nationality"),
+            col("ac.LanguageId").alias("InterpreterRequirementsLanguage"),
+            col("ac.CentreId").alias("DedicatedHearingCentre"),
+            col("ac.AppealCategories"),
             # Case Respondent Fields
             col("cr.Respondent").alias("CaseRespondent"),
             col("cr.Reference").alias("CaseRespondentReference"),
@@ -517,7 +652,11 @@ def bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang():
 
 # COMMAND ----------
 
-@dlt.table(name='bronze_bail_ac_ca_apt_country_detc', comment='ARIA Migration Archive Bails cases bronze table',path=f"{silver_mnt}/bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang")
+@dlt.table(
+    name='bronze_bail_ac_ca_apt_country_detc',
+    comment='ARIA Migration Archive Bails cases bronze table',
+    partition_cols=["CaseNo"],
+    path=f"{silver_mnt}/bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang")
 def bronze_bail_ac_ca_apt_country_detc():
     return (
         dlt.read("raw_case_appellant").alias("ca")
@@ -642,6 +781,7 @@ def bronze_bail_ac_ca_apt_country_detc():
 @dlt.table(
     name="bronze_bail_ac_cl_ht_list_lt_hc_c_ls_adj",
     comment="ARIA Migration Archive Bails cases bronze table",
+    partition_cols=["CaseNo"],
     path=f"{silver_mnt}/bronze_bail_ac_cl_ht_list_lt_hc_c_ls_adj"
 )
 def bronze_bail_ac_cl_ht_list_lt_hc_c_ls_adj():
@@ -669,6 +809,7 @@ def bronze_bail_ac_cl_ht_list_lt_hc_c_ls_adj():
             col("ht.DoNotUse"),
             # List
             col("l.ListName"),
+            col("l.StartDate").alias("HearingDate"),
             col("l.StartTime").alias("ListStartTime"),
             # ListType
             col("lt.Description").alias("ListTypeDesc"),
@@ -719,18 +860,22 @@ def bronze_bail_ac_cl_ht_list_lt_hc_c_ls_adj():
 
 # COMMAND ----------
 
-@dlt.table(name="bronze_bail_ac_bfdiary_bftype", comment="ARIA Migration Archive Bails cases bronze table", path=f"{silver_mnt}/bronze_bail_ac_bfdiary_bftype")
+@dlt.table(
+    name="bronze_bail_ac_bfdiary_bftype", 
+    comment="ARIA Migration Archive Bails cases bronze table", 
+    partition_cols=["CaseNo"],
+    path=f"{silver_mnt}/bronze_bail_ac_bfdiary_bftype")
 def bronze_bail_ac_bfdiary_bftype():
     return (
         dlt.read("raw_bf_diary").alias("bfd")
         .join(dlt.read("raw_bf_type").alias("bft"), col("bfd.BFTypeId") == col("bft.BFTypeId"), "left_outer")
         .select(
             col("bfd.CaseNo"),
-            col("bfd.BFDate"),
-            col("bfd.Entry").alias("BFDiaryEntry"),
-            col("bfd.EntryDate").alias("BFDiaryEntryDate"),
+            col("bfd.Entry") ,
+            col("bfd.EntryDate"),
             col("bfd.DateCompleted"),
             col("bfd.Reason"),
+            # -- bF Type Fields
             col("bft.Description").alias("BFTypeDescription"),
             col("bft.DoNotUse")
         )
@@ -764,7 +909,11 @@ def bronze_bail_ac_bfdiary_bftype():
 
 # COMMAND ----------
 
-@dlt.table(name="bronze_ bail_ac _history_users", comment="ARIA Migration Archive Bails cases bronze table", path=f"{silver_mnt}/bronze_bail_ac_history_users")
+@dlt.table(
+    name="bronze_bail_ac_history_users", 
+    comment="ARIA Migration Archive Bails cases bronze table", 
+    partition_cols=["CaseNo"],
+    path=f"{silver_mnt}/bronze_bail_ac_history_users")
 def bronze_bail_ac_history_users():
     return (
         dlt.read("raw_history").alias("h")
@@ -776,15 +925,13 @@ def bronze_bail_ac_history_users():
             col("h.HistDate"),
             col("h.HistType"),
             col("h.Comment").alias("HistoryComment"),
-            col("h.DeletedBy"),
             col("h.StatusId"),
             # Users table fields
             col("u.Name").alias("UserName"),
             col("u.UserType"),
-            col("u.Fullname"),
-            col("u.Suspended"),
-            col("u.Extension"),
-            col("u.DoNotUse")
+            col("u.Fullname").alias("UserFullname"),
+            col("u.Extension").alias("TelephoneExtension"),
+            col("u.DoNotUse").alias("DoNotUseUser")
         )
     )
 
@@ -811,7 +958,11 @@ def bronze_bail_ac_history_users():
 
 # COMMAND ----------
 
-@dlt.table(name="bronze_ bail_ac _link_linkdetail", comment="ARIA Migration Archive Bails cases bronze table", path=f"{silver_mnt}/bronze_bail_ac_link_linkdetail")
+@dlt.table(
+  name="bronze_bail_ac_link_linkdetail", 
+  comment="ARIA Migration Archive Bails cases bronze table", 
+  partition_cols=["CaseNo"],
+  path=f"{silver_mnt}/bronze_bail_ac_link_linkdetail")
 def bronze_bail_ac_link_linkdetail():
     return (
         dlt.read("raw_link").alias("l")
@@ -832,6 +983,7 @@ def bronze_bail_ac_link_linkdetail():
 @dlt.table(
     name="bronze_bail_status_sc_ra_cs",
     comment="ARIA Migration Archive Bails Status cases bronze table",
+    partition_cols=["CaseNo"],
     path=f"{silver_mnt}/bronze_bail_status_sc_ra_cs"
 )
 def bronze_bail_status_sc_ra_cs():
@@ -847,19 +999,20 @@ def bronze_bail_status_sc_ra_cs():
             col("s.CaseNo"),
             col("s.CaseStatus"),
             col("s.DateReceived"),
+            col("s.Notes1").alias("StatusNotes1"),
+            # -- Date Fields varied on case type- deriving dates from other date fields
             col("s.Keydate"),
             col("s.MiscDate1"),
-            col("s.Notes1").alias("StatusNotes1"),
             col("s.MiscDate2"),
             col("s.MiscDate3"),
             col("s.Chairman"),
-            col("s.Recognizance"),
-            col("s.Security"),
+            col("s.Recognizance").alias("TotalAmountOfFinancialCondition"),
+            col("s.Security").alias("TotalSecurity"),
             col("s.Notes2").alias("StatusNotes2"),
             col("s.DecisionDate"),
             col("s.Outcome").alias("OutcomeStatus"),
-            col("s.Promulgated"),
-            col("s.Party"),
+            col("s.Promulgated").alias("StatusPromulgated"),
+            col("s.Party").alias("StatusParty"),
             col("s.ResidenceOrder"),
             col("s.ReportingOrder"),
             col("s.BailedTimePlace"),
@@ -876,9 +1029,10 @@ def bronze_bail_status_sc_ra_cs():
             col("s.DecisionSentToHODate"),
             col("s.VideoLink"),
             col("s.WorkAndStudyRestriction"),
-            col("s.Tagging"),
+            col("s.Tagging").alias("StatusBailConditionTagging"),
             col("s.OtherCondition"),
             col("s.OutcomeReasons"),
+            col("s.FC"),
             # CaseStatus fields
             col("cs.Description").alias("CaseStatusDescription"),
             col("cs.DoNotUse").alias("DoNotUseCaseStatus"),
@@ -915,6 +1069,7 @@ def bronze_bail_status_sc_ra_cs():
 @dlt.table(
     name="bronze_bail_ac_appealcategory_category",
     comment="ARIA Migration Archive Bails Appeal Category cases bronze table",
+    partition_cols=["CaseNo"],
     path=f"{silver_mnt}/bronze_bail_ac_appealcategory_category"
 )
 def bronze_bail_ac_appealcategory_category():
@@ -1041,7 +1196,78 @@ def silver_normal_bail():
     # Perform aggregation and order the results
     final_result = result.groupBy(F.col("ac.CaseNo")).agg(F.first("RetentionStatus").alias("RetentionStatus")).orderBy(F.col("ac.CaseNo"))
 
+
     return final_result
+
+
+# COMMAND ----------
+
+from pyspark.sql import functions as F
+
+# Define the function if you want to use it later
+# def silver_normal_bail():
+
+# Read the necessary raw data
+appeal_case = spark.read.table("hive_metastore.aria_bails.raw_appeal_cases").alias("ac")
+status = spark.read.table("hive_metastore.aria_bails.raw_status").alias("t")
+file_location = spark.read.table("hive_metastore.aria_bails.raw_file_location").alias("fl")
+history = spark.read.table("hive_metastore.aria_bails.raw_history").alias("h")
+
+# Create a subquery to get the max StatusId for each CaseNo
+max_status_subquery = (
+    status
+    .withColumn("status_value", F.when(F.isnull(F.col("CaseStatus")), -1).otherwise(F.col("CaseStatus"))) # new column with the status value if null setting it to -1
+    .filter(F.col("status_value") != 17) # filter out status value of 17
+    .groupBy("CaseNo")  # group by case No
+    .agg(F.max("StatusId").alias("max_ID"))
+)
+max_status_subquery = max_status_subquery.select("CaseNo", "max_ID").alias("s")
+
+# Join the AppealCase to sub Query then status table then file location then history
+result = (
+    appeal_case
+    .join(max_status_subquery, F.col("ac.CaseNo") == F.col("s.CaseNo"), "left_outer")  
+    .join(status, (F.col("t.CaseNo") == F.col("s.CaseNo")) & 
+               (F.col("s.max_ID") == F.col("t.StatusId")), "left_outer")  
+    .join(file_location, F.col("fl.CaseNo") == F.col("ac.CaseNo"), "left_outer")
+    .join(history, F.col("h.CaseNo") == F.col("ac.CaseNo"), "left_outer")
+)
+result_filtered = result.filter(
+    (F.col("ac.CaseType") == 2) &
+    (F.col("fl.DeptId") != 519) &
+    (
+        (~F.col("fl.Note").like("%destroyed%")) &
+        (~F.col("fl.Note").like("%detroyed%")) &
+        (~F.col("fl.Note").like("%destoyed%")) & 
+        (~F.col("fl.Note").like("%distroyed%")) |
+        (F.col("fl.Note").isNull())
+    ))
+
+result_with_case = result_filtered.withColumn(
+    "case_result",
+    F.when(F.col("h.Comment").like("%indefinite retention%"), 'Legal Hold')
+     .when(F.col("h.Comment").like("%indefinate retention%"), 'Legal Hold')
+     .when(F.date_add(F.col("t.DecisionDate"), 2 * 365) < F.current_date(), 'Destroy')
+     .otherwise('Archive')
+)
+final_result = result_with_case.filter(F.col("case_result") == 'Archive')
+
+final_grouped_result = final_result.groupBy(
+    "ac.CaseNo",
+#     "cst.Description",  
+#     "dt.Description",  
+    "t.DecisionDate",
+    "fl.Note"
+).agg(
+    F.count(F.lit(1)).alias("case_count")  # Aggregate count of cases
+)
+
+display(final_grouped_result)
+
+
+
+# Show the results for debugging
+# result.select("ac.CaseNo").groupBy("ac.CaseNo").count().alias("count").filter(F.col("count") > 1).show()
 
 
 # COMMAND ----------
@@ -1069,11 +1295,11 @@ def silver_legal_hold_normal_bail():
         .join(file_location.alias("fl"), F.col("ac.CaseNo") == F.col("fl.CaseNo"), "left_outer")
         .join(history.alias("h"), F.col("h.CaseNo") == F.col("ac.CaseNo"), "left_outer")
         .filter(
-            (F.col("ac.CaseType") == '2') &
-            (F.col("fl.DeptId") != 519) &
+            (col("ac.CaseType") == '2') &
+            (col("fl.DeptId") != 519) &
             (
-                F.col("h.Comment").like('%indefinite retention%') |
-                F.col("h.Comment").like('%indefinate retention%')
+                col("h.Comment").like('%indefinite retention%') |
+                col("h.Comment").like('%indefinate retention%')
             )
         )
     )
@@ -1082,12 +1308,346 @@ def silver_legal_hold_normal_bail():
     final_result = (
         result.select(F.col("ac.CaseNo"))
         .groupBy(F.col("ac.CaseNo"))
-        .agg(F.count("*").alias("count"))  # Example aggregation
+        .agg(F.count("*").alias("count"))  
         .orderBy(F.col("ac.CaseNo"))
     )
 
-    return final_result.select("CaseNo")  # Select only the CaseNo for the final result
+    return final_result.select("CaseNo")  
 
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Scottish Bails holding funds
+
+# COMMAND ----------
+
+# import from csv
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Gold Output Code
+
+# COMMAND ----------
+
+# # load bails html file
+
+# bails_html_path = "/dbfs/mnt/ingest00landingsboxhtml-template/bail-no-js.html"
+
+# with open(bails_html_path, "r") as f:
+#     html_template = "".join(l for l in f)
+
+# # displayHTML(html=html_template)
+
+# COMMAND ----------
+
+from pyspark.sql import functions as F
+
+# Define the function if you want to use it later
+# def silver_normal_bail():
+
+# Read the necessary raw data
+appeal_case = spark.read.table("hive_metastore.aria_bails.raw_appeal_cases").alias("ac")
+status = spark.read.table("hive_metastore.aria_bails.raw_status").alias("t")
+file_location = spark.read.table("hive_metastore.aria_bails.raw_file_location").alias("fl")
+history = spark.read.table("hive_metastore.aria_bails.raw_history").alias("h")
+
+# Create a subquery to get the max StatusId for each CaseNo
+max_status_subquery = (
+    status
+    .withColumn("status_value", F.when(F.isnull(F.col("CaseStatus")), -1).otherwise(F.col("CaseStatus"))) # new column with the status value if null setting it to -1
+    .filter(F.col("status_value") != 17) # filter out status value of 17
+    .groupBy("CaseNo")  # group by case No
+    .agg(F.max("StatusId").alias("max_ID"))
+)
+max_status_subquery = max_status_subquery.select("CaseNo", "max_ID").alias("s")
+
+# Join the AppealCase to sub Query then status table then file location then history
+result = (
+    appeal_case
+    .join(max_status_subquery, F.col("ac.CaseNo") == F.col("s.CaseNo"), "left_outer")  
+    .join(status, (F.col("t.CaseNo") == F.col("s.CaseNo")) & 
+               (F.col("s.max_ID") == F.col("t.StatusId")), "left_outer")  
+    .join(file_location, F.col("fl.CaseNo") == F.col("ac.CaseNo"), "left_outer")
+    .join(history, F.col("h.CaseNo") == F.col("ac.CaseNo"), "left_outer")
+)
+result_filtered = result.filter(
+    (F.col("ac.CaseType") == 2) &
+    (F.col("fl.DeptId") != 519) &
+    (
+        (~F.col("fl.Note").like("%destroyed%")) &
+        (~F.col("fl.Note").like("%detroyed%")) &
+        (~F.col("fl.Note").like("%destoyed%")) & 
+        (~F.col("fl.Note").like("%distroyed%")) |
+        (F.col("fl.Note").isNull())
+    ))
+
+result_with_case = result_filtered.withColumn(
+    "case_result",
+    F.when(F.col("h.Comment").like("%indefinite retention%"), 'Legal Hold')
+     .when(F.col("h.Comment").like("%indefinate retention%"), 'Legal Hold')
+     .when(F.date_add(F.col("t.DecisionDate"), 2 * 365) < F.current_date(), 'Destroy')
+     .otherwise('Archive')
+)
+final_result = result_with_case.filter(F.col("case_result") == 'Archive')
+
+final_grouped_result = final_result.groupBy(
+    "ac.CaseNo",
+#     "cst.Description",  
+#     "dt.Description",  
+    "t.DecisionDate",
+    "fl.Note"
+).agg(
+    F.count(F.lit(1)).alias("case_count")
+    
+)
+final_normal_bail = final_grouped_result.orderBy("CaseNo", ascending=False).cache()
+display(final_normal_bail)
+
+
+
+# Show the results for debugging
+# result.select("ac.CaseNo").groupBy("ac.CaseNo").count().alias("count").filter(F.col("count") > 1).show()
+
+
+# COMMAND ----------
+
+ #generate bails html
+# loads html template 
+# load bails html file
+
+def format_date(date_value):
+    if date_value:
+        return datetime.strftime(date_value, "%d/%m/%Y")
+    return ""  # Return empty string if date_value is None
+
+bails_html_path = "/dbfs/mnt/ingest00landingsboxhtml-template/bails-no-js-v2.html"
+
+with open(bails_html_path, "r") as f:
+    html_template = f.read()
+
+# displayHTML(html=html_template)
+
+ # get the Normal Bail CaseNo
+rows = final_normal_bail.select("CaseNo").collect()
+caseno_list = [row[0] for row in rows]
+
+#development using 2 test case no
+test_case_no = caseno_list[0:2]
+print(test_case_no)
+
+# filter m1 for the test case no
+m1 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang").filter(F.col("CaseNo").isin(test_case_no)).alias("m1")
+m2 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_ca_apt_country_detc").filter(F.col("Relationship").isNull()).filter(F.col("CaseNo").isin(test_case_no)).alias("m2")
+m1_m2 = m1.join(
+    m2,F.col("m1.CaseNo") == F.col("m2.CaseNo")
+)
+                                                                                                                                    
+
+case_surety = spark.read.table("hive_metastore.aria_bails.bronze_case_surety_query").filter(F.col("CaseNo").isin(test_case_no))
+m3 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_cl_ht_list_lt_hc_c_ls_adj").filter(F.col("CaseNo").isin(test_case_no))
+m4 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_bfdiary_bftype").filter(F.col("CaseNo").isin(test_case_no))
+m5 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_history_users").filter(F.col("CaseNo").isin(test_case_no))
+m6 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_link_linkdetail").filter(F.col("CaseNo").isin(test_case_no))
+m7 = spark.read.table("hive_metastore.aria_bails.bronze_bail_status_sc_ra_cs").filter(F.col("CaseNo").isin(test_case_no))
+
+
+
+display(m1_m2)
+for row in m1_m2.collect():
+    case_number = row["CaseNo"]
+    m1_replacement = {
+        "{{ bailCaseNo }}":row["CaseNo"] ,
+        "{{ hoRef }}": row["HORef"] ,
+        "{{ lastName }}": row["AppellantName"],
+        "{{ firstName }}" : row["AppellantForenames"],
+        "{{ birthDate }}": format_date(row["AppellantBirthDate"]),
+        "{{ portRef }}": row["PortReference"],
+        ## Main section
+        "{{BailType}}": row["BailType"],
+        "{{AppealCategoriesField}}": row["AppealCategories"],
+        "{{Nationality}}":row["Nationality"],
+        "{{TravelOrigin}}":row["CountryOfTravelOrigin"],
+        "{{Port}}":row["PortOfEntry"],
+        "{{DateOfReceipt}}":format_date(row["DateReceived"]),
+        "{{DedicatedHearingCentre}}":row["DedicatedHearingCentre"],
+        "{{DateNoticeServed}}":format_date(row["DateServed"]) ,
+        # "{{CurrentStatus}}":"", Comes from M7 table
+        "{{ConnectedFiles}}":"",
+        "{{DateOfIssue}}":format_date(row["DateOfIssue"]),
+        "{{FileLocation}}":"FileLocationNote",
+        "{{NextHearingDate}}":row["DateOfNextListedHearing"],
+        # "{{lastDocument}}": LastDocument Field is populated by the latest Comment from the History table where HistType = 16
+        "{{BFEntry}}":"",
+        "{{ProvisionalDestructionDate}}":format_date(row["ProvisionalDestructionDate"]),
+
+        # Parties Tab - Respondent Section
+        "{{RespondentName}}":row["CaseRespondent"],
+        "{{repName}}":row["CaseRepName"],
+        "{{InterpreterRequirementsLanguage}}" : row["InterpreterRequirementsLanguage"],
+        "{{HOInterpreter}}" : row["HOInterpreter"],
+        "{{CourtPreference}}" : row["CourtPreference"],
+        "{{language}}": row["InterpreterRequirementsLanguage"],
+
+        # Misc Tab
+        "{{Notes}}" : row["AppealCaseNote"],
+
+        # Maintain cost awards Tab
+
+        # Representative Tab
+        "{{RepName}}":row["CaseRepName"],
+        "{{CaseRepAddress1}}": row["CaseRepAddress1"],
+        "{{CaseRepAddress2}}": row["CaseRepAddress2"],
+        "{{CaseRepAddress3}}": row["CaseRepAddress3"],
+        "{{CaseRepAddress4}}": row["CaseRepAddress4"],
+        "{{CaseRepAddress5}}": row["CaseRepAddress5"],
+        "{{CaseRepPostcode}}": row["CaseRepPostcode"],
+        "{{CaseRepTelephone}}": row["CaseRepTelephone"],
+        "{{CaseRepFAX}}": row["CaseRepFax"],
+        "{{CaseRepEmail}}": row["CaseRepEmail"],
+        "{{RepDxNo1}}": row["RepDxNo1"],
+        # "{{RepLAARefNo}}": "",
+        # "{{RepLAACommission}}":"",
+        #File specific contact
+
+
+
+        # Respondent Tab
+        "{{RespondentName}}":row["CaseRespondent"],
+        "{{CaseRespondentAddress1}}": row["RespondentAddress1"],
+        "{{CaseRespondentAddress2}}": row["RespondentAddress2"],
+        "{{CaseRespondentAddress3}}": row["RespondentAddress3"],
+        "{{CaseRespondentAddress4}}": row["RespondentAddress4"],
+        "{{CaseRespondentAddress5}}": row["RespondentAddress5"],
+        "{{CaseRespondentPostcode}}": row["RespondentPostcode"],
+        "{{CaseRespondentTelephone}}": row["RespondentTelephone"],
+        "{{CaseRespondentFAX}}": row["RespondentFax"],
+        "{{CaseRespondentEmail}}": row["RespondentEmail"],
+        "{{CaseRespondentRef}}":row["CaseRespondentReference"],
+        "{{CaseRespondentContact}}":row["CaseRespondentContact"],
+
+
+
+        # Status Tab - Additional Language
+        "{{PrimaryLanguage}}":row["Language"],
+
+        # Parties Tab
+        # "{{Detained}}": row[""]
+        "{{Centre}}":row["DetentionCentre"],
+
+
+
+        # Financial Condition supporter
+        # which case surty do we use
+
+
+        # status - Hearing details tab
+        # need logic to filter which hearing details to use using latest date
+        "{{Centre}}": row["DetentionCentre"],
+        "{{AddressLine1}}": row["DetentionCentreAddress1"],
+        "{{AddressLine2}}": row["DetentionCentreAddress2"],
+        "{{AddressLine3}}": row["DetentionCentreAddress3"],
+        "{{AddressLine4}}": row["DetentionCentreAddress4"],
+        "{{AddressLine5}}": row["DetentionCentreAddress5"],
+        "{{Postcode}}": row["DetentionCentrePostcode"],
+        "{{PrisonRef}}": row["AppellantPrisonRef"],
+        
+        } 
+    # BF diary 
+    m4_filtered = m4.filter(F.col("CaseNo") == case_number)
+    bf_diary_code = ""
+    for index,row in enumerate(m4_filtered.collect(),start=1):
+        bf_line = f"<tr><td id=\"midpadding\">{row['EntryDate']}</td><td id=\"midpadding\">{row['BFTypeDescription']}</td><td id=\"midpadding\">{row['Entry']}</td><td id=\"midpadding\">{row['DateCompleted']}</td></tr>"
+        bf_diary_code += bf_line + "\n"
+    # History 
+    m5_filtered = m5.filter(F.col("CaseNo") == case_number)
+    history_code = ''
+    for index, row in enumerate(m5_filtered.collect(),start=1):
+        history_line = f"<tr><td id='midpadding'>{row['HistDate']}</td><td id='midpadding'>{row['HistType']}</td><td id='midpadding'>{row['UserName']}</td><td id='midpadding'>{row['HistoryComment']}</td></tr>"
+        history_code += history_line + "\n"
+
+    # # Linked Files
+    # m6_filtered = m6.filter(F.col("CaseNo") == case_number)
+    # linked_files_code = ''
+    # for index, row in enumerate(m6_filtered.collect(),start=1):
+    #     linked_files_line = f"<tr><td id="midpadding"></td><td id="midpadding"></td><td id="midpadding"></td><td id="midpadding"></td></tr>"
+
+    # status
+    m7_filtered = m7.filter(F.col("CaseNo") == case_number)
+
+    
+
+    
+    
+
+    # inirilise html template
+    html = html_template
+    # add multiple lines of code for bf diary
+    html = html.replace("{{bfdiaryPlaceholder}}",bf_diary_code)
+    # add multiple lines of code for history
+    html = html.replace("{{HistoryPlaceholder}}",history_code)
+    for key, value in m1_replacement.items():
+        html = html.replace(str(key), str(value))
+    displayHTML(html)
+
+
+
+
+
+# COMMAND ----------
+
+temp = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang")
+
+display(temp.groupBy("BailType").count())
+
+# COMMAND ----------
+
+m2 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_ca_apt_country_detc").filter(F.col("Relationship").isNull())
+
+
+# display(
+#     m2.filter(F.col("Relationship").isNull())
+#     .orderBy(F.col("CaseNo").desc())
+#     )
+
+# display(m2.groupBy(F.col("CaseNo")).count().orderBy(F.col("count").desc()))
+
+display(m2.filter(F.col("CaseNo")=="DC/00006/2003"))
+
+# COMMAND ----------
+
+case_surety = spark.read.table("hive_metastore.aria_bails.bronze_case_surety_query")
+display(case_surety.filter(F.col("CaseNo")=="ZY/00008     "))
+
+# COMMAND ----------
+
+m3 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_cl_ht_list_lt_hc_c_ls_adj")
+
+display(m3.filter(F.col("CaseNo")=="ZY/00008     "))
+
+# COMMAND ----------
+
+m4 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_bfdiary_bftype")
+
+display(m4.filter(F.col("CaseNo").isin(test_case_no)))
+
+# COMMAND ----------
+
+m5 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_history_users")
+
+display(m5.filter(F.col("CaseNo")=="JA/00001/2014"))
+
+# COMMAND ----------
+
+m6 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_link_linkdetail")
+
+display(m6)
+
+# COMMAND ----------
+
+m7 = spark.read.table("hive_metastore.aria_bails.bronze_bail_status_sc_ra_cs").filter(F.col("CaseNo").isin(test_case_no))
+display(m7)
 
 # COMMAND ----------
 

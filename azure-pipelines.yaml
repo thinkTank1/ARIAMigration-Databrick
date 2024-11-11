@@ -28,3 +28,4 @@ stages:
     - template: pipeline/steps/test_perms.yaml
       parameters:
         pythonVersion: 3.10
+        env: ${{ parameters.env }}

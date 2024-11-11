@@ -25,7 +25,7 @@ stages:
   - stage: Test Permissions
     displayName: 'Test Agent Permissions'
     jobs:
-    - template: pipeline/steps/test_perms.yaml
+    - template: pipeline/jobs/deploy.yaml
       parameters:
         pythonVersion: 3.10
         env: ${{ parameters.env }}

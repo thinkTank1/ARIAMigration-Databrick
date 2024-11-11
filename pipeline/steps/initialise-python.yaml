@@ -1,0 +1,30 @@
+parameters:
+  pythonVersion: ''
+  env: ''
+  mainRepositoryName: ''
+##
+# Install python and initialise the .env file
+##
+steps:
+- checkout: self
+  fetchDepth: 0
+- checkout: data-catalogue-core
+- task: AzureCLI@2
+  displayName: 'Install python ${{ parameters.pythonVersion }}'
+  inputs:
+    azureSubscription: 'DTS-DATAINGEST-SBOX'
+    scriptType: bash
+    scriptLocation: inlineScript
+    inlineScript: |
+      set -x
+      apt-get update
+      ACCEPT_EULA=Y apt-get -y install python${{ parameters.pythonVersion }} python3-dev python3-pip
+      python${{ parameters.pythonVersion }} --version
+      python${{ parameters.pythonVersion }} -m venv working_dir
+      source working_dir/bin/activate
+      export PYTHONPATH="${PYTHONPATH}:/./"
+      python${{ parameters.pythonVersion }} -m pip install -U pip
+      python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/pipeline/scripts/pipeline_test.py
+#      python${{ parameters.pythonVersion }} -m pip install -r $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/requirements.txt
+#      python $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/pipeline/scripts/populate_env_file.py --env ${{ parameters.env }}
+    workingDirectory: '${{ parameters.mainRepositoryName }}/'

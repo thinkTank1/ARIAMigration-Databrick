@@ -15,8 +15,8 @@ def populate_env_file(env: str):
         Utility function to populate a .env file based on the current environment configuration
     """
     data_to_write = {
-        # Account name is either dc-purview or dc-mspurview (for test)
-        "PURVIEW_ACCOUNT": "dc-" + ("ms" if env != "dev" else "") + f"purview-{env}",
+        # TBC
+        "ACCOUNT_NAME": "",
         "ENV": env,
         "DEVOPS_AGENT_NAME": f"DTS Bootstrap (sub:dts-sharedservices-{env})",
         "BUILD_ID": "".join([str(randint(0, 9)) for x in range(0, 5)])

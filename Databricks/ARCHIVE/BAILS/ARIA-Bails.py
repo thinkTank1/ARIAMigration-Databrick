@@ -1452,9 +1452,93 @@ m5 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_history_users").
 m6 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_link_linkdetail").filter(F.col("CaseNo").isin(test_case_no))
 m7 = spark.read.table("hive_metastore.aria_bails.bronze_bail_status_sc_ra_cs").filter(F.col("CaseNo").isin(test_case_no))
 
+# Case status Mapping
+case_status_mappings = {
+    11: {
+        "{{StatusOfBail}}": "CaseStatus",
+        "{{DateOfOrder}}": "DateReceived",
+        "{{InterpreterRequired}}": "InterpreterRequired",
+        "{{DetailsOfOrder}}": "StatusNotes1",
+        "{{DatePaymentInstructions}}": "MiscDate1",
+        "{{DateChequesIssued}}": "MiscDate2",
+        "{{VideoLink}}": "VideoLink",
+        "{{DateOfDecision}}": "DecisionDate",
+        "{{Outcome}}": "Outcome"
+    },
+    4: {
+        "{{StatusOfBail}}": "CaseStatus",
+        "{{DateOfApplication}}": "DateReceived",
+        "{{InterpreterRequired}}": "InterpreterRequired",
+        "{{TotalFinancialCondition}}": "Recognizance",
+        "{{BailCondition}}": "BailCondition",
+        "{{TotalSecurity}}": "Security",
+        "{{DateDischarged}}": "MiscDate1",
+        "{{RemovalDate}}": "MiscDate3",
+        "{{HOConsentDate}}": "DecisionSentToHODate"
+    },
+    6: {
+        "{{StatusOfBail}}": "CaseStatus",
+        "{{DateOfOrder}}": "DateReceived",
+        "{{DateOfHearing}}": "DecisionDate",
+        "{{FC}}": "FC",
+        "{{InterpreterRequired}}": "InterpreterRequired",
+        "{{DetailsOfOrder}}": "Notes",
+        "{{InstalmentDetails}}": "Security",
+        "{{TotalAmount}}": "Security",
+        "{{VideoLink}}": "VideoLink",
+        "{{Contact}}": "Contact",
+        "{{CollectionOffice}}": "CourtName",
+        "{{Phone}}": "Telephone",
+        "{{AddressLine1}}": "Address1",
+        "{{AddressLine2}}": "Address2",
+        "{{AddressLine3}}": "Address3",
+        "{{AddressLine4}}": "Address4",
+        "{{AddressLine5}}": "Address5",
+        "{{Postcode}}": "Postcode",
+        "{{Notes}}": "Notes2",
+        "{{DateOfDecision}}": "DecisionDate",
+        "{{Outcome}}": "Outcome"
+    },
+    8: {
+        "{{StatusOfBail}}": "CaseStatus",
+        "{{DateCautionLodged}}": "DateReceived",
+        "{{AmountLodged}}": "Recognizance",
+        "{{WhomToBeRepaid}}": "StatusNotes1"
+    },
+    18: {
+        "{{StatusOfBail}}": "CaseStatus",
+        "{{DateOfApplication}}": "DateReceived",
+        "{{DateOfHearing}}": "KeyDate",
+        "{{InterpreterRequired}}": "InterpreterRequired",
+        "{{DateOfOrder}}": "MiscDate2",
+        "{{TotalFinancialCondition}}": "Recognizance",
+        "{{BailCondition}}": "BailCondition",
+        "{{TotalSecurity}}": "Security",
+        "{{DateDischarged}}": "MiscDate1",
+        "{{VideoLink}}": "VideoLink",
+        "{{DateOfDecision}}": "DecisionDate",
+        "{{Outcome}}": "Outcome",
+        "{{HOConsentDate}}": "DecisionSentToHODate"
+    },
+    19: {
+        "{{StatusOfBail}}": "CaseStatus",
+        "{{DateOfApplication}}": "DateReceived",
+        "{{PartyMakingApplication}}": "Party",
+        "{{DateOfHearing}}": "KeyDate",
+        "{{InterpreterRequired}}": "InterpreterRequired",
+        "{{DateOfOrder}}": "MiscDate1",
+        "{{TotalFinancialCondition}}": "Recognizance",
+        "{{BailCondition}}": "BailCondition",
+        "{{TotalSecurity}}": "Security",
+        "{{DateDischarged}}": "MiscDate2",
+        "{{VideoLink}}": "VideoLink",
+        "{{DateOfDecision}}": "DecisionDate",
+        "{{Outcome}}": "Outcome"
+    }
+}
 
 
-display(m1_m2)
+# display(m1_m2)
 for row in m1_m2.collect():
     case_number = row["CaseNo"]
     m1_replacement = {
@@ -1574,7 +1658,16 @@ for row in m1_m2.collect():
     #     linked_files_line = f"<tr><td id="midpadding"></td><td id="midpadding"></td><td id="midpadding"></td><td id="midpadding"></td></tr>"
 
     # status
-    m7_filtered = m7.filter(F.col("CaseNo") == case_number)
+    bail_entry = m7.filter(F.col("CaseNo") == case_number).collect()
+
+    # for entry in bail_entry:
+    #     case_status = entry['CaseStatus']
+    #     if case_status in case_status_mappings:
+    #         status_mappings = case_status_mappings[case_status]
+
+    #         for place_holder, field in status_mappings.items():
+    #             value = entry[field] if field in entry else ""
+    #             html = html.replace(place_holder,str(value) or "")
 
     
 
@@ -1583,6 +1676,329 @@ for row in m1_m2.collect():
 
     # inirilise html template
     html = html_template
+    # add multiple lines of code for bf diary
+    html = html.replace("{{bfdiaryPlaceholder}}",bf_diary_code)
+    # add multiple lines of code for history
+    html = html.replace("{{HistoryPlaceholder}}",history_code)
+    for key, value in m1_replacement.items():
+        html = html.replace(str(key), str(value))
+    displayHTML(html)
+
+
+
+
+
+# COMMAND ----------
+
+ #generate bails html
+# loads html template 
+# load bails html file
+
+def format_date(date_value):
+    if date_value:
+        return datetime.strftime(date_value, "%Y-%m-%d")
+    return ""  # Return empty string if date_value is None
+
+bails_html_path = "/dbfs/mnt/ingest00landingsboxhtml-template/bails-no-js-v2.html"
+
+with open(bails_html_path, "r") as f:
+    html_template = f.read()
+
+# displayHTML(html=html_template)
+
+ # get the Normal Bail CaseNo
+rows = final_normal_bail.select("CaseNo").collect()
+caseno_list = [row[0] for row in rows]
+
+#development using 2 test case no
+test_case_no = caseno_list[0:2]
+print(test_case_no)
+
+# filter m1 for the test case no
+m1 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang").filter(F.col("CaseNo").isin(test_case_no)).alias("m1")
+m2 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_ca_apt_country_detc").filter(F.col("Relationship").isNull()).filter(F.col("CaseNo").isin(test_case_no)).alias("m2")
+m1_m2 = m1.join(
+    m2,F.col("m1.CaseNo") == F.col("m2.CaseNo")
+)
+                                                                                                                                    
+
+case_surety = spark.read.table("hive_metastore.aria_bails.bronze_case_surety_query").filter(F.col("CaseNo").isin(test_case_no))
+m3 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_cl_ht_list_lt_hc_c_ls_adj").filter(F.col("CaseNo").isin(test_case_no))
+m4 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_bfdiary_bftype").filter(F.col("CaseNo").isin(test_case_no))
+m5 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_history_users").filter(F.col("CaseNo").isin(test_case_no))
+m6 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_link_linkdetail").filter(F.col("CaseNo").isin(test_case_no))
+m7 = spark.read.table("hive_metastore.aria_bails.bronze_bail_status_sc_ra_cs").filter(F.col("CaseNo").isin(test_case_no))
+
+# Case status Mapping
+case_status_mappings = {
+    11: {  # Scottish Payment Liability
+        "{{ScottishPaymentLiabilityStatusOfBail}}": "CaseStatus",
+        "{{ScottishPaymentLiabilityDateOfOrder}}": "DateReceived",
+        "{{ScottishPaymentLiabilityDateOfHearing}}": "Keydate",
+        "{{ScottishPaymentLiabilityFC}}": "FC",
+        "{{ScottishPaymentLiabilityInterpreterRequired}}": "InterpreterRequired",
+        "{{ScottishPaymentLiabilityDetailsOfOrder}}": "StatusNotes1",
+        "{{ScottishPaymentLiabilityDatePaymentInstructions}}": "MiscDate1",
+        "{{ScottishPaymentLiabilityDateChequesIssued}}": "MiscDate2",
+        "{{ScottishPaymentLiabilityVideoLink}}": "VideoLink",
+        "{{ScottishPaymentLiabilityDateOfDecision}}": "DecisionDate",
+        "{{ScottishPaymentLiabilityOutcome}}": "OutcomeStatus"
+    },
+    4: {  # Bail Application
+        "{{BailApplicationStatusOfBail}}": "CaseStatus",
+        "{{BailApplicationDateOfApplication}}": "DateReceived",
+        "{{BailApplicationDateOfHearing}}": "DecisionDate",
+        "{{BailApplicationFC}}": "FC",
+        "{{BailApplicationInterpreterRequired}}": "InterpreterRequired",
+        "{{BailApplicationDateOfOrder}}": "MiscDate2",
+        "{{BailApplicationTotalAmountOfFinancialCondition}}": "TotalAmountOfFinancialCondition",
+        "{{BailApplicationBailCondition}}": "BailConditions",
+        "{{BailApplicationTotalSecurity}}": "TotalSecurity",
+        "{{BailApplicationDateDischarged}}": "MiscDate1",
+        "{{BailApplicationRemovalDate}}": "MiscDate3",
+        "{{BailApplicationVideoLink}}": "VideoLink",
+        "{{BailApplicationResidenceOrderMade}}": "ResidenceOrder",
+        "{{BailApplicationReportingOrderMade}}": "ReportingOrder",
+        "{{BailApplicationBailedTimePlace}}": "BailedTimePlace",
+        "{{BailApplicationBailedDateOfHearing}}": "BaileddateHearing",
+        "{{BailApplicationDateOfDecision}}": "DecisionDate",
+        "{{BailApplicationOutcome}}": "OutcomeStatus",
+        "{{BailApplicationHOConsentDate}}": "DecisionSentToHODate"
+    },
+    6: {  # Payment Liability
+        "{{PaymentLiabilityStatusOfBail}}": "CaseStatus",
+        "{{PaymentLiabilityDateOfOrder}}": "DateReceived",
+        "{{PaymentLiabilityDateOfHearing}}": "DecisionDate",
+        "{{PaymentLiabilityFC}}": "FC",
+        "{{PaymentLiabilityInterpreterRequired}}": "InterpreterRequired",
+        "{{PaymentLiabilityDetailsOfOrder}}": "StatusNotes1",
+        "{{PaymentLiabilityInstalmentDetails}}": "TotalSecurity",
+        "{{PaymentLiabilityTotalAmount}}": "TotalSecurity",
+        "{{PaymentLiabilityVideoLink}}": "VideoLink",
+        "{{PaymentLiabilityContact}}": "ContactStatus",
+        "{{PaymentLiabilityCollectionOffice}}": "SCCourtName",
+        "{{PaymentLiabilityPhone}}": "SCTelephone",
+        "{{PaymentLiabilityAddressLine1}}": "SCAddress1",
+        "{{PaymentLiabilityAddressLine2}}": "SCAddress2",
+        "{{PaymentLiabilityAddressLine3}}": "SCAddress3",
+        "{{PaymentLiabilityAddressLine4}}": "SCAddress4",
+        "{{PaymentLiabilityAddressLine5}}": "SCAddress5",
+        "{{PaymentLiabilityPostcode}}": "SCPostcode",
+        "{{PaymentLiabilityNotes}}": "Notes2",
+        "{{PaymentLiabilityDateOfDecision}}": "DecisionDate",
+        "{{PaymentLiabilityOutcome}}": "OutcomeStatus"
+    },
+    8: {  # Lodgement
+        "{{LodgementStatusOfBail}}": "CaseStatus",
+        "{{LodgementDateCautionLodged}}": "DateReceived",
+        "{{LodgementAmountOfLodged}}": "TotalAmountOfFinancialCondition",
+        "{{LodgementWhomToBeRepaid}}": "StatusNotes1"
+    },
+    18: {  # Bail Renewal
+        "{{BailRenewalStatusOfBail}}": "CaseStatus",
+        "{{BailRenewalDateOfApplication}}": "DateReceived",
+        "{{BailRenewalDateOfHearing}}": "Keydate",
+        "{{BailRenewalInterpreterRequired}}": "InterpreterRequired",
+        "{{BailRenewalDateOfOrder}}": "MiscDate2",
+        "{{BailRenewalTotalAmountOfFinancialCondition}}": "TotalAmountOfFinancialCondition",
+        "{{BailRenewalBailCondition}}": "BailConditions",
+        "{{BailRenewalTotalSecurity}}": "TotalSecurity",
+        "{{BailRenewalDateDischarged}}": "MiscDate1",
+        "{{BailRenewalVideoLink}}": "VideoLink",
+        "{{BailRenewalDateOfDecision}}": "DecisionDate",
+        "{{BailRenewalOutcome}}": "OutcomeStatus",
+        "{{BailRenewalHOConsentDate}}": "DecisionSentToHODate"
+    },
+    19: {  # Bail Variation
+        "{{BailVariationStatusOfBail}}": "CaseStatus",
+        "{{BailVariationDateOfApplication}}": "DateReceived",
+        "{{BailVariationPartyMakingApplication}}": "Party",
+        "{{BailVariationDateOfHearing}}": "Keydate",
+        "{{BailVariationInterpreterRequired}}": "InterpreterRequired",
+        "{{BailVariationDateOfOrder}}": "MiscDate1",
+        "{{BailVariationTotalAmountOfFinancialCondition}}": "TotalAmountOfFinancialCondition",
+        "{{BailVariationBailCondition}}": "BailConditions",
+        "{{BailVariationTotalSecurity}}": "TotalSecurity",
+        "{{BailVariationDateDischarged}}": "MiscDate2",
+        "{{BailVariationVideoLink}}": "VideoLink",
+        "{{BailVariationDateOfDecision}}": "DecisionDate",
+        "{{BailVariationOutcome}}": "OutcomeStatus"
+    }
+}
+
+date_fields = {
+    "DateReceived", "Keydate", "MiscDate1", "MiscDate2", "MiscDate3",
+    "DecisionDate", "DateOfOrder", "DatePaymentInstructions", 
+    "DateChequesIssued", "DateCautionLodged", "HOConsentDate"
+}
+
+display(m7)
+
+
+# COMMAND ----------
+
+    for row in m1_m2.collect():
+        case_number = row["CaseNo"]
+    # status
+        bail_entry = m7.filter(F.col("CaseNo") == case_number).collect()
+        html = html_template
+
+        for entry in bail_entry:
+            case_status = int(entry['CaseStatus'])
+            if case_status in case_status_mappings:
+                status_mappings = case_status_mappings[case_status]
+
+                for place_holder, field in status_mappings.items():
+                    if field in date_fields:
+                        value = format_date(entry[field]) if field in entry else ""
+                    else:
+                        value = str(entry[field]) if field in entry else ""
+                    html = html.replace(place_holder, value)
+                    print(f"placeholder: {place_holder}, field: {field}, value: {value}")
+        displayHTML(html)
+
+# COMMAND ----------
+
+
+
+# display(m1_m2)
+for row in m1_m2.collect():
+    case_number = row["CaseNo"]
+    m1_replacement = {
+        "{{ bailCaseNo }}":row["CaseNo"] ,
+        "{{ hoRef }}": row["HORef"] ,
+        "{{ lastName }}": row["AppellantName"],
+        "{{ firstName }}" : row["AppellantForenames"],
+        "{{ birthDate }}": format_date(row["AppellantBirthDate"]),
+        "{{ portRef }}": row["PortReference"],
+        ## Main section
+        "{{BailType}}": row["BailType"],
+        "{{AppealCategoriesField}}": row["AppealCategories"],
+        "{{Nationality}}":row["Nationality"],
+        "{{TravelOrigin}}":row["CountryOfTravelOrigin"],
+        "{{Port}}":row["PortOfEntry"],
+        "{{DateOfReceipt}}":format_date(row["DateReceived"]),
+        "{{DedicatedHearingCentre}}":row["DedicatedHearingCentre"],
+        "{{DateNoticeServed}}":format_date(row["DateServed"]) ,
+        # "{{CurrentStatus}}":"", Comes from M7 table
+        "{{ConnectedFiles}}":"",
+        "{{DateOfIssue}}":format_date(row["DateOfIssue"]),
+        "{{FileLocation}}":"FileLocationNote",
+        "{{NextHearingDate}}":row["DateOfNextListedHearing"],
+        # "{{lastDocument}}": LastDocument Field is populated by the latest Comment from the History table where HistType = 16
+        "{{BFEntry}}":"",
+        "{{ProvisionalDestructionDate}}":format_date(row["ProvisionalDestructionDate"]),
+
+        # Parties Tab - Respondent Section
+        "{{RespondentName}}":row["CaseRespondent"],
+        "{{repName}}":row["CaseRepName"],
+        "{{InterpreterRequirementsLanguage}}" : row["InterpreterRequirementsLanguage"],
+        "{{HOInterpreter}}" : row["HOInterpreter"],
+        "{{CourtPreference}}" : row["CourtPreference"],
+        "{{language}}": row["InterpreterRequirementsLanguage"],
+
+        # Misc Tab
+        "{{Notes}}" : row["AppealCaseNote"],
+
+        # Maintain cost awards Tab
+
+        # Representative Tab
+        "{{RepName}}":row["CaseRepName"],
+        "{{CaseRepAddress1}}": row["CaseRepAddress1"],
+        "{{CaseRepAddress2}}": row["CaseRepAddress2"],
+        "{{CaseRepAddress3}}": row["CaseRepAddress3"],
+        "{{CaseRepAddress4}}": row["CaseRepAddress4"],
+        "{{CaseRepAddress5}}": row["CaseRepAddress5"],
+        "{{CaseRepPostcode}}": row["CaseRepPostcode"],
+        "{{CaseRepTelephone}}": row["CaseRepTelephone"],
+        "{{CaseRepFAX}}": row["CaseRepFax"],
+        "{{CaseRepEmail}}": row["CaseRepEmail"],
+        "{{RepDxNo1}}": row["RepDxNo1"],
+        # "{{RepLAARefNo}}": "",
+        # "{{RepLAACommission}}":"",
+        #File specific contact
+
+
+
+        # Respondent Tab
+        "{{RespondentName}}":row["CaseRespondent"],
+        "{{CaseRespondentAddress1}}": row["RespondentAddress1"],
+        "{{CaseRespondentAddress2}}": row["RespondentAddress2"],
+        "{{CaseRespondentAddress3}}": row["RespondentAddress3"],
+        "{{CaseRespondentAddress4}}": row["RespondentAddress4"],
+        "{{CaseRespondentAddress5}}": row["RespondentAddress5"],
+        "{{CaseRespondentPostcode}}": row["RespondentPostcode"],
+        "{{CaseRespondentTelephone}}": row["RespondentTelephone"],
+        "{{CaseRespondentFAX}}": row["RespondentFax"],
+        "{{CaseRespondentEmail}}": row["RespondentEmail"],
+        "{{CaseRespondentRef}}":row["CaseRespondentReference"],
+        "{{CaseRespondentContact}}":row["CaseRespondentContact"],
+
+
+
+        # Status Tab - Additional Language
+        "{{PrimaryLanguage}}":row["Language"],
+
+        # Parties Tab
+        # "{{Detained}}": row[""]
+        "{{Centre}}":row["DetentionCentre"],
+
+
+
+        # Financial Condition supporter
+        # which case surty do we use
+
+
+        # status - Hearing details tab
+        # need logic to filter which hearing details to use using latest date
+        "{{Centre}}": row["DetentionCentre"],
+        "{{AddressLine1}}": row["DetentionCentreAddress1"],
+        "{{AddressLine2}}": row["DetentionCentreAddress2"],
+        "{{AddressLine3}}": row["DetentionCentreAddress3"],
+        "{{AddressLine4}}": row["DetentionCentreAddress4"],
+        "{{AddressLine5}}": row["DetentionCentreAddress5"],
+        "{{Postcode}}": row["DetentionCentrePostcode"],
+        "{{PrisonRef}}": row["AppellantPrisonRef"],
+        
+        } 
+    # BF diary 
+    m4_filtered = m4.filter(F.col("CaseNo") == case_number)
+    bf_diary_code = ""
+    for index,row in enumerate(m4_filtered.collect(),start=1):
+        bf_line = f"<tr><td id=\"midpadding\">{row['EntryDate']}</td><td id=\"midpadding\">{row['BFTypeDescription']}</td><td id=\"midpadding\">{row['Entry']}</td><td id=\"midpadding\">{row['DateCompleted']}</td></tr>"
+        bf_diary_code += bf_line + "\n"
+    # History 
+    m5_filtered = m5.filter(F.col("CaseNo") == case_number)
+    history_code = ''
+    for index, row in enumerate(m5_filtered.collect(),start=1):
+        history_line = f"<tr><td id='midpadding'>{row['HistDate']}</td><td id='midpadding'>{row['HistType']}</td><td id='midpadding'>{row['UserName']}</td><td id='midpadding'>{row['HistoryComment']}</td></tr>"
+        history_code += history_line + "\n"
+
+    # # Linked Files
+    # m6_filtered = m6.filter(F.col("CaseNo") == case_number)
+    # linked_files_code = ''
+    # for index, row in enumerate(m6_filtered.collect(),start=1):
+    #     linked_files_line = f"<tr><td id="midpadding"></td><td id="midpadding"></td><td id="midpadding"></td><td id="midpadding"></td></tr>"
+
+    # status
+    bail_entry = m7.filter(F.col("CaseNo") == case_number).collect()
+
+   # inirilise html template
+    html = html_template
+    for entry in bail_entry:
+        case_status = int(entry['CaseStatus'])
+        if case_status in case_status_mappings:
+            status_mappings = case_status_mappings[case_status]
+
+            for place_holder, field in status_mappings.items():
+                if field in date_fields:
+                    value = format_date(entry[field]) if field in entry else ""
+                else:
+                    value = str(entry[field]) if field in entry else ""
+                html = html.replace(place_holder, value)
+
+    
+
     # add multiple lines of code for bf diary
     html = html.replace("{{bfdiaryPlaceholder}}",bf_diary_code)
     # add multiple lines of code for history

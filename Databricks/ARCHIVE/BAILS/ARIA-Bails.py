@@ -1690,6 +1690,11 @@ for row in m1_m2.collect():
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## Code start: import template
+
+# COMMAND ----------
+
  #generate bails html
 # loads html template 
 # load bails html file
@@ -1837,6 +1842,11 @@ display(m7)
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## case status dev code
+
+# COMMAND ----------
+
     for row in m1_m2.collect():
         case_number = row["CaseNo"]
     # status
@@ -1856,6 +1866,11 @@ display(m7)
                     html = html.replace(place_holder, value)
                     print(f"placeholder: {place_holder}, field: {field}, value: {value}")
         displayHTML(html)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Combined total HTML
 
 # COMMAND ----------
 
@@ -1914,8 +1929,8 @@ for row in m1_m2.collect():
         "{{CaseRepFAX}}": row["CaseRepFax"],
         "{{CaseRepEmail}}": row["CaseRepEmail"],
         "{{RepDxNo1}}": row["RepDxNo1"],
-        # "{{RepLAARefNo}}": "",
-        # "{{RepLAACommission}}":"",
+        "{{RepLAARefNo}}": row["CaseRepLSCCommission"],
+        "{{RepLAACommission}}":row["CaseRepRepresentativeRef"],
         #File specific contact
 
 
@@ -2013,57 +2028,133 @@ for row in m1_m2.collect():
 
 # COMMAND ----------
 
-temp = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_cr_cs_ca_fl_cres_mr_res_lang")
-
-display(temp.groupBy("BailType").count())
-
-# COMMAND ----------
-
-m2 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_ca_apt_country_detc").filter(F.col("Relationship").isNull())
-
-
-# display(
-#     m2.filter(F.col("Relationship").isNull())
-#     .orderBy(F.col("CaseNo").desc())
-#     )
-
-# display(m2.groupBy(F.col("CaseNo")).count().orderBy(F.col("count").desc()))
-
-display(m2.filter(F.col("CaseNo")=="DC/00006/2003"))
+# MAGIC %md
+# MAGIC ## case surety dev
 
 # COMMAND ----------
 
-case_surety = spark.read.table("hive_metastore.aria_bails.bronze_case_surety_query")
-display(case_surety.filter(F.col("CaseNo")=="ZY/00008     "))
+financial_condition_code = ""
+
+template = template = """                
+<div class="content{{Index}}">
+    <div id="sponsor{{Index}}">
+        <br>
+        <br>
+        <table id="table3" style="height:250px">
+            <tbody>
+                <tr>
+                    <th style="vertical-align: top; text-align: left; padding-left:5px">Financial Condition Supporter Details</th>
+                </tr>
+                <tr>
+                    <td colspan="2" style="vertical-align: top;">
+                        <table id="table4">
+                            <tbody>
+                                <tr>
+                                    <td id="labels"><label for="sponsorName{{Index}}">Name : </label></td>
+                                    <td><input type="text" id="sponsorName{{Index}}" size="45" value="{{SponsorName}}" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td id="labels"><label for="sponsorForename{{Index}}">Forename(s) : </label></td>
+                                    <td><input type="text" id="sponsorForename{{Index}}" size="45" value="{{SponsorForename}}" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td id="labels"><label for="sponsorTitle{{Index}}">Title : </label></td>
+                                    <td><input type="text" id="sponsorTitle{{Index}}" value="{{SponsorTitle}}" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td id="labels" style="vertical-align: top;"><label for="sponsorAddress{{Index}}">Address: </label></td>
+                                    <td style="vertical-align: top;">
+                                        <input type="text" id="addressLine1{{Index}}" name="addressLine1" size="45" value="{{SponsorAddress1}}" readonly><br>
+                                        <input type="text" id="addressLine2{{Index}}" name="addressLine2" size="45" value="{{SponsorAddress2}}" readonly><br>
+                                        <input type="text" id="addressLine3{{Index}}" name="addressLine3" size="45" value="{{SponsorAddress3}}" readonly><br>
+                                        <input type="text" id="addressLine4{{Index}}" name="addressLine4" size="45" value="{{SponsorAddress4}}" readonly><br>
+                                        <input type="text" id="addressLine5{{Index}}" name="addressLine5" size="45" value="{{SponsorAddress5}}" readonly><br>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td id="labels"><label for="sponsorPostcode{{Index}}">Postcode : </label></td>
+                                    <td><input type="text" id="sponsorPostcode{{Index}}" value="{{SponsorPostcode}}" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td id="labels"><label for="sponsorPhone{{Index}}">Phone : </label></td>
+                                    <td><input type="text" id="sponsorPhone{{Index}}" value="{{SponsorPhone}}" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td id="labels"><label for="sponsorEmail{{Index}}">Email : </label></td>
+                                    <td colspan="2"><input type="text" id="sponsorEmail{{Index}}" value="{{SponsorEmail}}" size="45" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td id="labels"><label for="amountFinancialCondition{{Index}}">Amount of financial condition £ : </label></td>
+                                    <td colspan="2"><input type="text" id="amountFinancialCondition{{Index}}" value="{{AmountOfFinancialCondition}}" size="10" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td id="labels"><label for="amountOfSecurity{{Index}}">Amount of security £ : </label></td>
+                                    <td colspan="2"><input type="text" id="amountOfSecurity{{Index}}" size="10" value="{{AmountOfSecurity}}" readonly>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                        <label for="solicitor{{Index}}">Solicitor : </label><input type="text" id="solicitor{{Index}}" size="3" value="{{SponsorSolicitor}}" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td id="labels"><label for="dateLodged{{Index}}">Date lodged : </label></td>
+                                    <td colspan="2"><input type="date" id="dateLodged{{Index}}" value="{{SponsorDateLodged}}" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td id="labels"><label for="location{{Index}}">Location : </label></td>
+                                    <td><input type="text" id="location{{Index}}" value="{{SponsorLocation}}" readonly></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+"""
 
 # COMMAND ----------
 
-m3 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_cl_ht_list_lt_hc_c_ls_adj")
-
-display(m3.filter(F.col("CaseNo")=="ZY/00008     "))
+display(case_surety)
 
 # COMMAND ----------
 
-m4 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_bfdiary_bftype")
+html = html_template
 
-display(m4.filter(F.col("CaseNo").isin(test_case_no)))
+case_surety_replacement = {
+    "{{SponsorName}}":"CaseSuretyName",
+    "{{SponsorForename}}":"CaseSuretyForenames",
+    "{{SponsorTitle}}":"CaseSuretyTitle",
+    "{{SponsorAddress1}}":"CaseSuretyAddress1",
+    "{{SponsorAddress2}}":"CaseSuretyAddress2",
+    "{{SponsorAddress3}}":"CaseSuretyAddress3",
+    "{{SponsorAddress4}}":"CaseSuretyAddress4",
+    "{{SponsorAddress5}}":"CaseSuretyAddress5",
+    "{{SponsorPostcode}}":"CaseSuretyPostcode",
+    "{{SponserPhone}}":"CaseSuretyTelephone",
+    "{{SponserEmail}}":"CaseSuretyEmail",
+    "{{AmountOfFinancialCondition}}":"AmountOfFinancialCondition",
+    "{{SponserSolicitor}}":"Solicitor",
+    "{{SponserDateLodged}}":"CaseSuretyDateLodged",
+    "{{SponserLocation}}":"Location"
 
-# COMMAND ----------
+}
 
-m5 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_history_users")
+for row in m1_m2.collect():
+    case_number = row["CaseNo"]
 
-display(m5.filter(F.col("CaseNo")=="JA/00001/2014"))
 
-# COMMAND ----------
+    financial_condition = case_surety.filter(F.col("CaseNo") == case_number)
 
-m6 = spark.read.table("hive_metastore.aria_bails.bronze_bail_ac_link_linkdetail")
+    for index,row in enumerate(financial_condition.collect(),start=1):
+        current_code = template.replace("{{Index}}",str(index))
+        for key,col_name in case_surety_replacement.items():
+            value = row[col_name]
+            current_code = current_code.replace(key, str(value) if value is not None else "")
+        financial_condition_code += current_code + "\n"
+        
+    html = html.replace("{{financial_condition_code}}",financial_condition_code)
+    displayHTML(html)
 
-display(m6)
 
-# COMMAND ----------
 
-m7 = spark.read.table("hive_metastore.aria_bails.bronze_bail_status_sc_ra_cs").filter(F.col("CaseNo").isin(test_case_no))
-display(m7)
 
 # COMMAND ----------
 

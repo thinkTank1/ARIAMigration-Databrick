@@ -40,16 +40,8 @@ steps:
     scriptType: bash
     scriptLocation: inlineScript
     inlineScript: |
-      echo "Building the Python wheel..."
-      python${{ parameters.pythonVersion }} -m venv .venv
-      source .venv/bin/activate
-      pip install --upgrade pip setuptools wheel
-      python $(System.DefaultWorkingDirectory)/ARIAMigration-Databrick/Databricks/SharedFunctionsLib/setup.py bdist_wheel || {
-          echo "Error: Failed to build the Python wheel."
-          deactivate
-          exit 1
-      }
-      deactivate
+      pip install --upgrade pip build
+      python${{ parameters.pythonVersion }} -m build --wheel
       mkdir -p $(Pipeline.Workspace)/wheel-cache
       cp dist/*.whl $(Pipeline.Workspace)/wheel-cache/
       if [ -f $(Pipeline.Workspace)/wheel-cache/common_functions-*.whl ]; then

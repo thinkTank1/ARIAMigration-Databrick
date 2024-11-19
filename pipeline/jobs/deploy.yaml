@@ -2,10 +2,8 @@ parameters:
   agentPool: ''
   pythonVersion: ''
   env: ''
+  mainRepositoryName: ARIAMigration-Databrick
 
-##
-# Deploy the specified app
-##
 jobs:
 - job: Deploy_App
   pool:
@@ -16,4 +14,9 @@ jobs:
     parameters:
       pythonVersion: ${{ parameters.pythonVersion }}
       env: ${{ parameters.env }}
-      mainRepositoryName: ARIAMigration-Databrick
+      mainRepositoryName: ${{ parameters.mainRepositoryName }}
+  - template: ../steps/build-wheel.yaml
+    parameters:
+      pythonVersion: ${{ parameters.pythonVersion }}
+      env: ${{ parameters.env }}
+      mainRepositoryName: ${{ parameters.mainRepositoryName }}

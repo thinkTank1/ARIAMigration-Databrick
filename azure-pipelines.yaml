@@ -22,8 +22,8 @@ variables:
       runTests: true
 
 stages:
-  - stage: Test_Permissions
-    displayName: 'Test Agent Permissions'
+  - stage: Build and Store Shared Funcs Wheel
+    displayName: ''
     jobs:
     - template: pipeline/jobs/deploy.yaml
       parameters:

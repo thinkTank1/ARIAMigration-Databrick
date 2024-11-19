@@ -3,7 +3,7 @@ parameters:
   env: ''
   mainRepositoryName: ''
 ##
-# Install python and initialise the .env file
+# Install Python and requirements.txt
 ##
 steps:
 - checkout: self

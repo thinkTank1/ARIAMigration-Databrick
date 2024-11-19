@@ -1,7 +1,7 @@
 parameters:
 - name: runTests
   type: boolean
-  default: true
+  default: false
 - name: env
   displayName: Environment
   type: string

@@ -5,6 +5,7 @@ parameters:
 
 steps:
 - checkout: self
+  clean: false
 
 #- task: AzureCLI@2
 #  displayName: 'Check for Shared Func Update'

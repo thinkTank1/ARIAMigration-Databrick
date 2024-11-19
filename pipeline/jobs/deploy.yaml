@@ -11,6 +11,7 @@ jobs:
   pool:
     vmImage: ${{ parameters.agentPool }}
   steps:
+  - checkout: self
   - template: ../steps/initialise-python.yaml
     parameters:
       pythonVersion: ${{ parameters.pythonVersion }}

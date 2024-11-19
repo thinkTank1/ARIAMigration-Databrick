@@ -23,6 +23,8 @@ steps:
       export PYTHONPATH="${PYTHONPATH}:/./"
       python${{ parameters.pythonVersion }} -m pip install -U pip
       echo "Current directory: $(System.DefaultWorkingDirectory)"
+      echo "Listing root directory..."
+      ls /home/vsts/work/1/s
 #      python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/pipeline/scripts/pipeline_test.py
 #      python${{ parameters.pythonVersion }} -m pip install -r $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/requirements.txt
 #      python $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/pipeline/scripts/populate_env_file.py --env ${{ parameters.env }}

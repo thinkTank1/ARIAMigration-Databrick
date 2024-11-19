@@ -2,7 +2,7 @@ parameters:
   agentPool: ''
   pythonVersion: ''
   env: ''
-  mainRepositoryName: ARIAMigration-Databrick
+  mainRepositoryName: ''
 
 jobs:
 - job: Deploy_App

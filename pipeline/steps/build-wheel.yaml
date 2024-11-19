@@ -42,7 +42,9 @@ steps:
     inlineScript: |
       # Build the Python wheel if changes are detected
       echo "Building the Python wheel..."
-      python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/ARIAMigration-Databrick/Databricks/SharedFunctionsLib/setup.py bdist_wheel
+      pip install --upgrade pip build
+      python${{ parameters.pythonVersion }} -m build --wheel
+#      python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/ARIAMigration-Databrick/Databricks/SharedFunctionsLib/setup.py bdist_wheel
       mkdir -p $(Pipeline.Workspace)/wheel-cache
       cp dist/*.whl $(Pipeline.Workspace)/wheel-cache/
       

@@ -7,7 +7,7 @@ steps:
 - checkout: self
 
 #- task: AzureCLI@2
-#  displayName: 'Build wheel'
+#  displayName: 'Check for Shared Func Update'
 #  inputs:
 #    azureSubscription: 'DTS-DATAINGEST-${{ upper(parameters.env) }}'
 #    scriptType: bash
@@ -33,6 +33,7 @@ steps:
 #    workingDirectory: '${{ parameters.mainRepositoryName }}/'
 
 - task: AzureCLI@2
+  displayName: 'Build wheel'
 #  condition: eq(variables.shouldBuildWheel, 'true')
   inputs:
     azureSubscription: 'DTS-DATAINGEST-${{ upper(parameters.env) }}'
@@ -41,18 +42,10 @@ steps:
     inlineScript: |
       # Build the Python wheel if changes are detected
       echo "Building the Python wheel..."
-      python${{ parameters.pythonVersion }} setup.py bdist_wheel
+      python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/Databricks/SharedFunctionsLib/setup.py bdist_wheel
       mkdir -p $(Pipeline.Workspace)/wheel-cache
       cp dist/*.whl $(Pipeline.Workspace)/wheel-cache/
-    workingDirectory: '${{ parameters.mainRepositoryName }}/'
-
-- task: AzureCLI@2
-#  condition: eq(variables.shouldBuildWheel, 'true')
-  inputs:
-    azureSubscription: 'DTS-DATAINGEST-${{ upper(parameters.env) }}'
-    scriptType: bash
-    scriptLocation: inlineScript
-    inlineScript: |
+      
       # Prepare the Python wheel for artifact storage
       if [ -f $(Pipeline.Workspace)/wheel-cache/common_functions-*.whl ]; then
         echo "Preparing wheel for artifact storage..."
@@ -63,6 +56,6 @@ steps:
     workingDirectory: '${{ parameters.mainRepositoryName }}/'
 
 - publish: dist
-  condition: eq(variables.shouldBuildWheel, 'true')
+#  condition: eq(variables.shouldBuildWheel, 'true')
   artifact: python-wheel
   displayName: 'Publish Python Wheel to Artifact Storage'

@@ -22,7 +22,7 @@ variables:
       runTests: true
 
 stages:
-  - stage: Build and Store Shared Funcs Wheel
+  - stage: Deploy
     displayName: ''
     jobs:
     - template: pipeline/jobs/deploy.yaml

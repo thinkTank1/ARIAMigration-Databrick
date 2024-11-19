@@ -1,7 +1,6 @@
 parameters:
   pythonVersion: ''
   env: ''
-  mainRepositoryName: ''
 
 steps:
 - checkout: self

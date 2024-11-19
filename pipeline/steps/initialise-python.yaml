@@ -1,7 +1,6 @@
 parameters:
   pythonVersion: ''
   env: ''
-  mainRepositoryName: ''
 ##
 # Install Python and requirements.txt
 ##
@@ -23,7 +22,7 @@ steps:
       source working_dir/bin/activate
       export PYTHONPATH="${PYTHONPATH}:/./"
       python${{ parameters.pythonVersion }} -m pip install -U pip
-      python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/pipeline/scripts/pipeline_test.py
+      python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/ARIAMigration-Databrick/pipeline/scripts/pipeline_test.py
 #      python${{ parameters.pythonVersion }} -m pip install -r $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/requirements.txt
 #      python $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/pipeline/scripts/populate_env_file.py --env ${{ parameters.env }}
     workingDirectory: '${{ parameters.mainRepositoryName }}/'

@@ -2,7 +2,6 @@ parameters:
   agentPool: ''
   pythonVersion: ''
   env: ''
-  mainRepositoryName: ''
 
 jobs:
 - job: Deploy_App
@@ -15,9 +14,7 @@ jobs:
     parameters:
       pythonVersion: ${{ parameters.pythonVersion }}
       env: ${{ parameters.env }}
-      mainRepositoryName: ${{ parameters.mainRepositoryName }}
   - template: ../steps/build-wheel.yaml
     parameters:
       pythonVersion: ${{ parameters.pythonVersion }}
       env: ${{ parameters.env }}
-      mainRepositoryName: ${{ parameters.mainRepositoryName }}

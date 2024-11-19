@@ -52,7 +52,7 @@ steps:
       else
           echo "No wheel found to publish."
       fi
-    workingDirectory: '${{ parameters.mainRepositoryName }}/'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}/Databricks/SharedFunctionsLib'
 
 - publish: dist
 #  condition: eq(variables.shouldBuildWheel, 'true')

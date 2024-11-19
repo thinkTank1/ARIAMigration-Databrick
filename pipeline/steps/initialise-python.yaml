@@ -7,6 +7,9 @@ parameters:
 ##
 steps:
 - checkout: self
+  persistCredentials: true
+  clean: true
+  fetchDepth: 1
 - task: AzureCLI@2
   displayName: 'Install python ${{ parameters.pythonVersion }}'
   inputs:

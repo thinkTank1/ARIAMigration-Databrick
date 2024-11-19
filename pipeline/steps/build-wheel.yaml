@@ -42,7 +42,7 @@ steps:
     scriptLocation: inlineScript
     inlineScript: |
       pip install --upgrade pip build
-      ls ${{ parameters.mainRepositoryName }}
+      ls $(System.DefaultWorkingDirectory)/${{ parameters.mainRepositoryName }}
       python${{ parameters.pythonVersion }} -m build --wheel
       mkdir -p $(Pipeline.Workspace)/wheel-cache
       cp dist/*.whl $(Pipeline.Workspace)/wheel-cache/

@@ -6,6 +6,7 @@ parameters:
 # Install python and initialise the .env file
 ##
 steps:
+- checkout: self
 - task: AzureCLI@2
   displayName: 'Install python ${{ parameters.pythonVersion }}'
   inputs:

@@ -50,7 +50,6 @@ steps:
       else
           echo "No wheel found to publish."
       fi
-    workingDirectory: '${{ parameters.mainRepositoryName }}/'
 
 - publish: dist
 #  condition: eq(variables.shouldBuildWheel, 'true')

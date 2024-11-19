@@ -7,7 +7,7 @@ steps:
 - checkout: self
 
 - task: AzureCLI@2
-  displayName: 'Retrieve or Build Shared Funcs Wheel - Check for Changes'
+  displayName: 'Git Check for Changes'
   inputs:
     azureSubscription: 'DTS-DATAINGEST-${{ upper(parameters.env) }}'
     scriptType: bash
@@ -25,7 +25,7 @@ steps:
 
 - task: AzureCLI@2
   condition: eq(variables.shouldBuildWheel, 'true')
-  displayName: 'Retrieve or Build Shared Funcs Wheel - Build Wheel'
+  displayName: 'Build Wheel'
   inputs:
     azureSubscription: 'DTS-DATAINGEST-${{ upper(parameters.env) }}'
     scriptType: bash
@@ -40,7 +40,7 @@ steps:
 
 - task: AzureCLI@2
   condition: eq(variables.shouldBuildWheel, 'true')
-  displayName: 'Retrieve or Build Shared Funcs Wheel - Prepare for Publishing'
+  displayName: 'Prepare for Publishing'
   inputs:
     azureSubscription: 'DTS-DATAINGEST-${{ upper(parameters.env) }}'
     scriptType: bash

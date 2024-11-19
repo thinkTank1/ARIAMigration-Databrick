@@ -1160,41 +1160,54 @@ def silver_normal_bail():
 
     # Create a subquery to get the max StatusId for each CaseNo
     max_status_subquery = (
-        status.filter(F.col("CaseStatus").isNull() | (F.col("CaseStatus") != 17))
-        .groupBy("CaseNo")
+        status
+        .withColumn("status_value", F.when(F.isnull(F.col("CaseStatus")), -1).otherwise(F.col("CaseStatus"))) # new column with the status value if null setting it to -1
+        .filter(F.col("status_value") != 17) # filter out status value of 17
+        .groupBy("CaseNo")  # group by case No
         .agg(F.max("StatusId").alias("max_ID"))
-    ).alias("max_status")
-
-    # Join the tables and apply the necessary filters and conditions
-    result = (
-        appeal_case.alias("ac")
-        .join(max_status_subquery, (F.col("ac.CaseNo") == F.col("max_status.CaseNo")), "left_outer")
-        .join(status, (F.col("s.CaseNo") == F.col("max_status.CaseNo")) & (F.col("s.StatusId") == F.col("max_status.max_ID")), "left_outer")
-        .join(file_location, F.col("ac.CaseNo") == F.col("fl.CaseNo"), "left_outer")
-        .join(history, F.col("h.CaseNo") == F.col("ac.CaseNo"), "left_outer")
-        .filter(
-            (F.col("ac.CaseType") == '2') &
-            (F.col("fl.DeptId") != 519) &
-            (
-                (F.col("fl.Note").isNull()) |
-                (~F.col("fl.Note").like('%destroyed%')) &
-                (~F.col("fl.Note").like('%detroyed%')) &
-                (~F.col("fl.Note").isNull()) &
-                (~F.col("fl.Note").like('%distroyed%'))
-            )
-        )
     )
+    max_status_subquery = max_status_subquery.select("CaseNo", "max_ID").alias("s")
 
-    # Adding a new column with conditions
-    result = result.withColumn(
-        "RetentionStatus",
-        F.when(F.col("h.Comment").like('%indefinite retention%') | F.col("h.Comment").like('%indefinate retention%'), 'Legal Hold')
-        .when(F.date_add(F.col("s.DecisionDate"), 730) < F.current_date(), 'Destroy')
+    # Join the AppealCase to sub Query then status table then file location then history
+    result = (
+        appeal_case
+        .join(max_status_subquery, F.col("ac.CaseNo") == F.col("s.CaseNo"), "left_outer")  
+        .join(status, (F.col("t.CaseNo") == F.col("s.CaseNo")) & 
+                (F.col("s.max_ID") == F.col("t.StatusId")), "left_outer")  
+        .join(file_location, F.col("fl.CaseNo") == F.col("ac.CaseNo"), "left_outer")
+        .join(history, F.col("h.CaseNo") == F.col("ac.CaseNo"), "left_outer")
+    )
+    result_filtered = result.filter(
+        (F.col("ac.CaseType") == 2) &
+        (F.col("fl.DeptId") != 519) &
+        (
+            (~F.col("fl.Note").like("%destroyed%")) &
+            (~F.col("fl.Note").like("%detroyed%")) &
+            (~F.col("fl.Note").like("%destoyed%")) & 
+            (~F.col("fl.Note").like("%distroyed%")) |
+            (F.col("fl.Note").isNull())
+        ))
+
+    result_with_case = result_filtered.withColumn(
+        "case_result",
+        F.when(F.col("h.Comment").like("%indefinite retention%"), 'Legal Hold')
+        .when(F.col("h.Comment").like("%indefinate retention%"), 'Legal Hold')
+        .when(F.date_add(F.col("t.DecisionDate"), 2 * 365) < F.current_date(), 'Destroy')
         .otherwise('Archive')
     )
+    final_result = result_with_case.filter(F.col("case_result") == 'Archive')
 
-    # Perform aggregation and order the results
-    final_result = result.groupBy(F.col("ac.CaseNo")).agg(F.first("RetentionStatus").alias("RetentionStatus")).orderBy(F.col("ac.CaseNo"))
+    final_grouped_result = final_result.groupBy(
+        "ac.CaseNo",
+    #     "cst.Description",  
+    #     "dt.Description",  
+        "t.DecisionDate",
+        "fl.Note"
+    ).agg(
+        F.count(F.lit(1)).alias("case_count")
+        
+    )
+    final_normal_bail = final_grouped_result.orderBy("CaseNo", ascending=False).cache()
 
 
     return final_result
@@ -1342,6 +1355,12 @@ def silver_legal_hold_normal_bail():
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## Dev silver normal bails
+# MAGIC
+
+# COMMAND ----------
+
 from pyspark.sql import functions as F
 
 # Define the function if you want to use it later
@@ -1393,22 +1412,18 @@ result_with_case = result_filtered.withColumn(
 final_result = result_with_case.filter(F.col("case_result") == 'Archive')
 
 final_grouped_result = final_result.groupBy(
-    "ac.CaseNo",
-#     "cst.Description",  
-#     "dt.Description",  
-    "t.DecisionDate",
-    "fl.Note"
+    "ac.CaseNo"
 ).agg(
     F.count(F.lit(1)).alias("case_count")
     
 )
 final_normal_bail = final_grouped_result.orderBy("CaseNo", ascending=False).cache()
-display(final_normal_bail)
+display(final_normal_bail.select("CaseNo"))
 
 
 
 # Show the results for debugging
-# result.select("ac.CaseNo").groupBy("ac.CaseNo").count().alias("count").filter(F.col("count") > 1).show()
+# final_normal_bail.select("ac.CaseNo").groupBy("ac.CaseNo").count().alias("count").filter(F.col("count") > 1).show()
 
 
 # COMMAND ----------

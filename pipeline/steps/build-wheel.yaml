@@ -40,18 +40,23 @@ steps:
     scriptType: bash
     scriptLocation: inlineScript
     inlineScript: |
-      # Build the Python wheel if changes are detected
       echo "Building the Python wheel..."
-      python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/ARIAMigration-Databrick/Databricks/SharedFunctionsLib/setup.py bdist_wheel
+      python${{ parameters.pythonVersion }} -m venv .venv
+      source .venv/bin/activate
+      pip install --upgrade pip setuptools wheel
+      python $(System.DefaultWorkingDirectory)/ARIAMigration-Databrick/Databricks/SharedFunctionsLib/setup.py bdist_wheel || {
+          echo "Error: Failed to build the Python wheel."
+          deactivate
+          exit 1
+      }
+      deactivate
       mkdir -p $(Pipeline.Workspace)/wheel-cache
       cp dist/*.whl $(Pipeline.Workspace)/wheel-cache/
-      
-      # Prepare the Python wheel for artifact storage
       if [ -f $(Pipeline.Workspace)/wheel-cache/common_functions-*.whl ]; then
-        echo "Preparing wheel for artifact storage..."
-        cp $(Pipeline.Workspace)/wheel-cache/common_functions-*.whl dist/
+          echo "Preparing wheel for artifact storage..."
+          cp $(Pipeline.Workspace)/wheel-cache/common_functions-*.whl dist/
       else
-        echo "No wheel found to publish."
+          echo "No wheel found to publish."
       fi
     workingDirectory: '${{ parameters.mainRepositoryName }}/'
 

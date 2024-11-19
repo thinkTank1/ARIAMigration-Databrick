@@ -15,7 +15,7 @@ trigger:
 
 variables:
   resourceGroupName: ingest00-main-${{ parameters.env }}
-  agentPool: hmcts-ss-dev
+  agentPool: "ubuntu-latest"
   ${{ if eq(parameters.env, 'prod') }}:
       runTests: false
   ${{ else }}:

@@ -8,10 +8,11 @@ parameters:
 ##
 jobs:
 - job: Deploy_App
-  pool: ${{ parameters.agentPool }}
+  pool:
+    vmImage: ${{ parameters.agentPool }}
   steps:
   - template: ../steps/initialise-python.yaml
     parameters:
-      pythonVersion: 3.10
+      pythonVersion: ${{ parameters.pythonVersion }}
       env: ${{ parameters.env }}
       mainRepositoryName: ARIAMigration-Databrick

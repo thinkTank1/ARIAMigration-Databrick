@@ -47,6 +47,10 @@
 
 # COMMAND ----------
 
+print("test")
+
+# COMMAND ----------
+
 pip install azure-storage-blob
 
 # COMMAND ----------

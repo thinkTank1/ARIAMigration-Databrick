@@ -4,8 +4,8 @@ parameters:
   mainRepositoryName: 'ARIAMigration-Databrick'
 
 steps:
-#- checkout: self
-#  clean: false
+- checkout: self
+  clean: false
 
 #- task: AzureCLI@2
 #  displayName: 'Check for Shared Func Update'
@@ -41,9 +41,6 @@ steps:
     scriptType: bash
     scriptLocation: inlineScript
     inlineScript: |
-      source working_dir/bin/activate
-      export PYTHONPATH="${PYTHONPATH}:/./"
-      
       echo "Installing required tools..."
       pip install --upgrade pip build
       

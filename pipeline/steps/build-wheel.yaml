@@ -4,10 +4,10 @@ parameters:
   mainRepositoryName: 'ARIAMigration-Databrick'
 
 steps:
-  - checkout: self
-    persistCredentials: false
-    clean: false
-    fetchDepth: 1
+- checkout: self
+  persistCredentials: false
+  clean: false
+  fetchDepth: 1
 
 #- task: AzureCLI@2
 #  displayName: 'Check for Shared Func Update'

@@ -9,7 +9,9 @@ jobs:
     vmImage: ${{ parameters.agentPool }}
   steps:
   - checkout: self
+    persistCredentials: false
     clean: false
+    fetchDepth: 1
   - template: ../steps/initialise-python.yaml
     parameters:
       pythonVersion: ${{ parameters.pythonVersion }}

@@ -1,7 +1,7 @@
 parameters:
   pythonVersion: ''
   env: ''
-  mainRepositoryName: 'ARIAMigration-Databrick'
+  mainRepositoryName: ''
 
 steps:
 - checkout: self

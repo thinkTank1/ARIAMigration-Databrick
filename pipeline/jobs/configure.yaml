@@ -2,9 +2,10 @@ parameters:
   agentPool: ''
   pythonVersion: ''
   env: ''
+  mainRepositoryName: ''
 
 jobs:
-- job: Deploy_App
+- job: Configure_Spark_Cluster
   pool:
     vmImage: ${{ parameters.agentPool }}
   steps:
@@ -15,7 +16,9 @@ jobs:
     parameters:
       pythonVersion: ${{ parameters.pythonVersion }}
       env: ${{ parameters.env }}
+      mainRepositoryName: ${{ parameters.mainRepositoryName }}
   - template: ../steps/build-wheel.yaml
     parameters:
       pythonVersion: ${{ parameters.pythonVersion }}
       env: ${{ parameters.env }}
+      mainRepositoryName: ${{ parameters.mainRepositoryName }}

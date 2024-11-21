@@ -1,7 +1,7 @@
 parameters:
   pythonVersion: ''
   env: ''
-  mainRepositoryName: 'ARIAMigration-Databrick'
+  mainRepositoryName: ''
 ##
 # Install Python
 ##

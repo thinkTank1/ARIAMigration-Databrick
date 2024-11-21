@@ -22,11 +22,12 @@ variables:
       runTests: true
 
 stages:
-  - stage: Deploy
+  - stage: Configure
     displayName: ''
     jobs:
-    - template: pipeline/jobs/deploy.yaml
+    - template: pipeline/jobs/configure.yaml
       parameters:
         agentPool: $(agentPool)
         pythonVersion: 3.10
         env: ${{ parameters.env }}
+        mainRepositoryName: 'ARIAMigration-Databrick'

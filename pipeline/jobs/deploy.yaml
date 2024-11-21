@@ -9,6 +9,7 @@ jobs:
     vmImage: ${{ parameters.agentPool }}
   steps:
   - checkout: self
+    persistCredentials: false
     clean: false
   - template: ../steps/initialise-python.yaml
     parameters:

@@ -79,11 +79,11 @@ spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
 initial_Load = False
 
 # Setting variables for use in subsequent cells
-raw_mnt = "/mnt/ingest00rawsboxraw/ARIADM/ARM/JOH"
-landing_mnt = "/mnt/ingest00landingsboxlanding/"
-bronze_mnt = "/mnt/ingest00curatedsboxbronze/ARIADM/ARM/JOH"
-silver_mnt = "/mnt/ingest00curatedsboxsilver/ARIADM/ARM/JOH"
-gold_mnt = "/mnt/ingest00curatedsboxgold/ARIADM/ARM/JOH"
+raw_mnt = "/mnt/ingest00rawsboxraw/ARIADM/ARM/JOH/test"
+landing_mnt = "/mnt/ingest00landingsboxlanding/test"
+bronze_mnt = "/mnt/ingest00curatedsboxbronze/ARIADM/ARM/JOH/test"
+silver_mnt = "/mnt/ingest00curatedsboxsilver/ARIADM/ARM/JOH/test"
+gold_mnt = "/mnt/ingest00curatedsboxgold/ARIADM/ARM/JOH/test"
 
 # COMMAND ----------
 
@@ -131,7 +131,7 @@ def extract_timestamp(file_path):
     return timestamp_str
 
 # Main function to read the latest parquet file, add audit columns, and return the DataFrame
-def read_latest_parquet(folder_name: str, view_name: str, process_name: str, base_path: str = "/mnt/ingest00landingsboxlanding/") -> "DataFrame":
+def read_latest_parquet(folder_name: str, view_name: str, process_name: str, base_path: str = "/mnt/ingest00landingsboxlanding/test/") -> "DataFrame":
     """
     Reads the latest .parquet file from a specified folder, adds audit columns, creates a temporary Spark view, and returns the DataFrame.
     
